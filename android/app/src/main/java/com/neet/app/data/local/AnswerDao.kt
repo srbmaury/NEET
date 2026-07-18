@@ -54,4 +54,24 @@ interface AnswerDao {
 
     @Query("SELECT * FROM answered_questions WHERE id = :id")
     suspend fun getById(id: String): AnsweredQuestionEntity?
+
+    @Query(
+        """
+        SELECT subject, topic, COUNT(*) AS wrongCount
+        FROM answered_questions
+        WHERE isCorrect = 0
+        GROUP BY subject, topic
+        ORDER BY wrongCount DESC
+        """,
+    )
+    fun mistakeTopicStats(): Flow<List<MistakeTopicStat>>
+
+    @Query(
+        """
+        SELECT * FROM answered_questions
+        WHERE subject = :subject AND topic = :topic AND isCorrect = 0
+        ORDER BY answeredAt DESC
+        """,
+    )
+    fun wrongAnswersForTopic(subject: String, topic: String): Flow<List<AnsweredQuestionEntity>>
 }

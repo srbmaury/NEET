@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.local.AnsweredQuestionEntity
+import com.neet.app.data.local.MistakeTopicStat
 import com.neet.app.data.local.SubjectStat
 import com.neet.app.data.local.TopicStat
 import com.neet.app.data.model.Subject
@@ -29,6 +30,9 @@ class StatsViewModel(historyRepository: HistoryRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val history: StateFlow<List<AnsweredQuestionEntity>> = historyRepository.history()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val mistakeTopics: StateFlow<List<MistakeTopicStat>> = historyRepository.mistakeTopicStats()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Filtering by subject happens before ranking/capping to MAX_FOCUS_AREAS — otherwise a

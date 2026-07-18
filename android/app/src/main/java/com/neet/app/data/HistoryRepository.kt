@@ -3,6 +3,7 @@ package com.neet.app.data
 import com.neet.app.data.local.AnswerDao
 import com.neet.app.data.local.AnsweredQuestionEntity
 import com.neet.app.data.local.MockTestDao
+import com.neet.app.data.local.MistakeTopicStat
 import com.neet.app.data.local.MockTestQuestionEntity
 import com.neet.app.data.local.MockTestSessionEntity
 import com.neet.app.data.local.SubjectStat
@@ -88,6 +89,11 @@ class HistoryRepository(
     fun topicStats(): Flow<List<TopicStat>> = answerDao.topicStats()
 
     fun history(): Flow<List<AnsweredQuestionEntity>> = answerDao.history()
+
+    fun mistakeTopicStats(): Flow<List<MistakeTopicStat>> = answerDao.mistakeTopicStats()
+
+    fun wrongAnswersForTopic(subject: String, topic: String): Flow<List<AnsweredQuestionEntity>> =
+        answerDao.wrongAnswersForTopic(subject, topic)
 
     /** Builds the full local snapshot as a typed payload for cross-device sync — the only
      * consumer now that manual file backup/restore has been replaced by account sync. */

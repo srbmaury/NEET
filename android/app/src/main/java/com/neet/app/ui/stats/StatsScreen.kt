@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,11 +39,12 @@ import com.neet.app.data.AuthRepository
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.SyncRepository
 import com.neet.app.data.local.AnsweredQuestionEntity
+import com.neet.app.data.local.MistakeTopicStat
 import com.neet.app.data.local.SubjectStat
 import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
 import com.neet.app.domain.Weightage
-import com.neet.app.ui.components.MarkdownText
+import com.neet.app.ui.components.AnswerRecordCard
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -71,6 +73,7 @@ fun StatsScreen(
     syncRepository: SyncRepository,
     onOpenQuestion: (String) -> Unit,
     onPracticeTopic: (Subject, String, Difficulty) -> Unit,
+    onReviewMistakes: (Subject, String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSignup: () -> Unit,
     modifier: Modifier = Modifier,
@@ -79,6 +82,7 @@ fun StatsScreen(
     val stats by viewModel.subjectStats.collectAsState()
     val history by viewModel.history.collectAsState()
     val focusAreas by viewModel.focusAreas.collectAsState()
+    val mistakeTopics by viewModel.mistakeTopics.collectAsState()
     val selectedSubject by viewModel.selectedSubject.collectAsState()
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = false)
     val accountEmail by authRepository.accountEmail.collectAsState(initial = null)
@@ -166,6 +170,31 @@ fun StatsScreen(
             }
         }
 
+        if (mistakeTopics.isNotEmpty()) {
+            item {
+                Text(
+                    "Mistakes to review",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(mistakeTopics, key = { "${it.subject}_${it.topic}" }) { mistake ->
+                        MistakeTopicCard(
+                            mistake = mistake,
+                            onClick = {
+                                onReviewMistakes(Subject.valueOf(mistake.subject), mistake.topic)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
         stickyHeader(key = "subject_tabs") {
             Row(
                 modifier = Modifier
@@ -173,7 +202,7 @@ fun StatsScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .horizontalScroll(rememberScrollState())
                     .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Subject.entries.forEach { subject ->
                     val subjectStat = statsBySubject[subject.name]
@@ -183,6 +212,7 @@ fun StatsScreen(
                         selected = subject == selectedSubject,
                         onClick = { viewModel.selectSubject(subject) },
                         label = { Text(label) },
+                        modifier = Modifier.height(40.dp),
                     )
                 }
             }
@@ -219,7 +249,11 @@ fun StatsScreen(
                     )
                 }
                 items(entriesForDate, key = { it.id }) { record ->
-                    HistoryCard(record, onClick = { onOpenQuestion(record.id) }, modifier = Modifier.padding(bottom = 8.dp))
+                    AnswerRecordCard(
+                        record = record,
+                        onClick = { onOpenQuestion(record.id) },
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
                 }
             }
         }
@@ -267,6 +301,33 @@ private fun AccountSection(
 }
 
 @Composable
+private fun MistakeTopicCard(mistake: MistakeTopicStat, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.width(200.dp).clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                mistake.topic,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+            )
+            Text(
+                mistake.subject.lowercase().replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            Text(
+                "${mistake.wrongCount} wrong",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFFC62828),
+            )
+        }
+    }
+}
+
+@Composable
 private fun FocusAreaCard(focusArea: FocusArea, onClick: () -> Unit) {
     val weightageColor = when (focusArea.weightage) {
         Weightage.HIGH -> Color(0xFFC62828)
@@ -302,42 +363,6 @@ private fun FocusAreaCard(focusArea: FocusArea, onClick: () -> Unit) {
                 },
                 style = MaterialTheme.typography.labelMedium,
             )
-        }
-    }
-}
-
-@Composable
-private fun HistoryCard(record: AnsweredQuestionEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                record.topic,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-            )
-            MarkdownText(
-                markdown = record.stem,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-            )
-            val correctColor = Color(0xFF2E7D32)
-            val wrongColor = Color(0xFFC62828)
-            MarkdownText(
-                markdown = "Your answer: ${record.selectedOptionKey}. ${record.selectedOptionText}",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (record.isCorrect) correctColor else wrongColor,
-                ),
-            )
-            if (!record.isCorrect) {
-                MarkdownText(
-                    markdown = "Correct answer: ${record.correctOptionKey}. ${record.correctOptionText}",
-                    style = MaterialTheme.typography.bodySmall.copy(color = correctColor),
-                )
-            }
         }
     }
 }

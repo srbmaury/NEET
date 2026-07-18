@@ -33,3 +33,9 @@ data class TopicStat(
     val total: Int,
     val correct: Int,
 )
+
+data class MistakeTopicStat(
+    val subject: String,
+    val topic: String,
+    val wrongCount: Int,
+)

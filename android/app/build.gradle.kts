@@ -19,7 +19,9 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8877/\"")
+            // 10.0.2.2 is the Android emulator's alias for the host machine and only resolves
+            // there — a real phone on the same Wi-Fi network needs the host's actual LAN IP.
+            buildConfigField("String", "BASE_URL", "\"http://192.168.1.15:8877/\"")
         }
         release {
             isMinifyEnabled = false

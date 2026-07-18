@@ -33,6 +33,7 @@ import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
 import com.neet.app.ui.auth.LoginScreen
 import com.neet.app.ui.auth.SignupScreen
+import com.neet.app.ui.mistakes.ReviewMistakesScreen
 import com.neet.app.ui.mocktest.MockTestHomeScreen
 import com.neet.app.ui.mocktest.MockTestResultScreen
 import com.neet.app.ui.mocktest.MockTestScreen
@@ -58,6 +59,7 @@ private const val ROUTE_LOGIN = "login"
 private const val ROUTE_SIGNUP = "signup"
 private const val ROUTE_NOTES_PICKER = "notes_picker"
 private const val ROUTE_NOTES = "notes/{subject}/{topic}"
+private const val ROUTE_REVIEW_MISTAKES = "review_mistakes/{subject}/{topic}"
 
 private data class BottomNavTab(val route: String, val label: String)
 
@@ -110,6 +112,9 @@ fun NeetNavHost(
                     onOpenQuestion = { answerId -> navController.navigate("review/$answerId") },
                     onPracticeTopic = { subject, topic, difficulty ->
                         navController.navigateToQuestion(subject, topic, difficulty)
+                    },
+                    onReviewMistakes = { subject, topic ->
+                        navController.navigateToReviewMistakes(subject, topic)
                     },
                     onNavigateToLogin = { navController.navigate(ROUTE_LOGIN) },
                     onNavigateToSignup = { navController.navigate(ROUTE_SIGNUP) },
@@ -245,6 +250,29 @@ fun NeetNavHost(
                     onBack = { navController.popBackStack() },
                 )
             }
+            composable(
+                route = ROUTE_REVIEW_MISTAKES,
+                arguments = listOf(
+                    navArgument("subject") { type = NavType.StringType },
+                    navArgument("topic") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val subject = Subject.valueOf(backStackEntry.arguments?.getString("subject").orEmpty())
+                val topic = URLDecoder.decode(
+                    backStackEntry.arguments?.getString("topic").orEmpty(),
+                    StandardCharsets.UTF_8.name(),
+                )
+                ReviewMistakesScreen(
+                    historyRepository = historyRepository,
+                    subject = subject,
+                    topic = topic,
+                    onBack = { navController.popBackStack() },
+                    onOpenQuestion = { answerId -> navController.navigate("review/$answerId") },
+                    onPracticeTopic = { practiceSubject, practiceTopic, difficulty ->
+                        navController.navigateToQuestion(practiceSubject, practiceTopic, difficulty)
+                    },
+                )
+            }
         }
     }
 }
@@ -257,6 +285,11 @@ private fun NavController.navigateToQuestion(subject: Subject, topic: String, di
 private fun NavController.navigateToNotes(subject: Subject, topic: String) {
     val encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name())
     navigate("notes/${subject.name}/$encodedTopic")
+}
+
+private fun NavController.navigateToReviewMistakes(subject: Subject, topic: String) {
+    val encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name())
+    navigate("review_mistakes/${subject.name}/$encodedTopic")
 }
 
 @Composable

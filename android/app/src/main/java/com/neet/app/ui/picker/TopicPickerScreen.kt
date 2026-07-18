@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
 import com.neet.app.domain.TopicCatalog
+import com.neet.app.ui.components.TopicRow
 
 @Composable
 fun TopicPickerScreen(
@@ -37,7 +39,7 @@ fun TopicPickerScreen(
         Text("Choose a subject", style = MaterialTheme.typography.titleMedium)
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Subject.entries.forEach { subject ->
                 FilterChip(
@@ -47,6 +49,7 @@ fun TopicPickerScreen(
                         selectedTopic = TopicCatalog.topicsFor(subject).first()
                     },
                     label = { Text(subject.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    modifier = Modifier.height(40.dp),
                 )
             }
         }
@@ -55,14 +58,14 @@ fun TopicPickerScreen(
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(TopicCatalog.topicsFor(selectedSubject)) { topic ->
-                FilterChip(
+                TopicRow(
+                    topic = topic,
+                    weightage = TopicCatalog.weightageOf(selectedSubject, topic),
                     selected = topic == selectedTopic,
                     onClick = { selectedTopic = topic },
-                    label = { Text(topic) },
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -70,13 +73,14 @@ fun TopicPickerScreen(
         Text("Difficulty", style = MaterialTheme.typography.titleMedium)
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Difficulty.entries.forEach { difficulty ->
                 FilterChip(
                     selected = difficulty == selectedDifficulty,
                     onClick = { selectedDifficulty = difficulty },
                     label = { Text(difficulty.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    modifier = Modifier.height(40.dp),
                 )
             }
         }
