@@ -76,8 +76,7 @@ fun StatsScreen(
     onReviewMistakes: (Subject, String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSignup: () -> Unit,
-    onOpenSyllabusHeatmap: () -> Unit,
-    onOpenRevisionTracker: () -> Unit,
+    onOpenSyllabusHub: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(historyRepository))
@@ -116,11 +115,11 @@ fun StatsScreen(
 
         item {
             Text(
-                "Track revisions →",
+                "Syllabus →",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .clickable(onClick = onOpenRevisionTracker)
+                    .clickable(onClick = onOpenSyllabusHub)
                     .padding(top = 12.dp, bottom = 4.dp),
             )
         }
@@ -181,17 +180,6 @@ fun StatsScreen(
                     }
                 }
             }
-        }
-
-        item {
-            Text(
-                "View full syllabus →",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clickable(onClick = onOpenSyllabusHeatmap)
-                    .padding(bottom = 12.dp),
-            )
         }
 
         if (mistakeTopics.isNotEmpty()) {

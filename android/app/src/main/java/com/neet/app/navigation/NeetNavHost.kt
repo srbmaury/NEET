@@ -43,12 +43,14 @@ import com.neet.app.ui.mocktest.MockTestScreen
 import com.neet.app.ui.notes.NoteScreen
 import com.neet.app.ui.notes.NotesTopicPickerScreen
 import com.neet.app.ui.picker.TopicPickerScreen
+import com.neet.app.ui.practicemodes.PracticeModesScreen
 import com.neet.app.ui.question.QuestionReviewScreen
 import com.neet.app.ui.question.QuestionScreen
 import com.neet.app.ui.revision.RevisionTrackerScreen
 import com.neet.app.ui.smartpractice.SmartPracticeScreen
 import com.neet.app.ui.sprint.SprintScreen
 import com.neet.app.ui.stats.StatsScreen
+import com.neet.app.ui.syllabus.SyllabusHubScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -66,7 +68,9 @@ private const val ROUTE_SIGNUP = "signup"
 private const val ROUTE_NOTES_PICKER = "notes_picker"
 private const val ROUTE_NOTES = "notes/{subject}/{topic}"
 private const val ROUTE_REVIEW_MISTAKES = "review_mistakes/{subject}/{topic}"
+private const val ROUTE_SYLLABUS_HUB = "syllabus_hub"
 private const val ROUTE_SYLLABUS_HEATMAP = "syllabus_heatmap"
+private const val ROUTE_PRACTICE_MODES = "practice_modes"
 private const val ROUTE_SMART_PRACTICE = "smart_practice"
 private const val ROUTE_SPRINT = "sprint/{subject}/{topic}"
 private const val ROUTE_FLASHCARDS = "flashcards/{subject}/{topic}"
@@ -115,6 +119,12 @@ fun NeetNavHost(
                     onStartQuestion = { subject, topic, difficulty ->
                         navController.navigateToQuestion(subject, topic, difficulty)
                     },
+                    onOpenPracticeModes = { navController.navigate(ROUTE_PRACTICE_MODES) },
+                )
+            }
+            composable(ROUTE_PRACTICE_MODES) {
+                PracticeModesScreen(
+                    onBack = { navController.popBackStack() },
                     onStartSmartPractice = { navController.navigate(ROUTE_SMART_PRACTICE) },
                     onStartSprint = { subject, topic -> navController.navigateToSprint(subject, topic) },
                 )
@@ -160,6 +170,12 @@ fun NeetNavHost(
                     },
                     onNavigateToLogin = { navController.navigate(ROUTE_LOGIN) },
                     onNavigateToSignup = { navController.navigate(ROUTE_SIGNUP) },
+                    onOpenSyllabusHub = { navController.navigate(ROUTE_SYLLABUS_HUB) },
+                )
+            }
+            composable(ROUTE_SYLLABUS_HUB) {
+                SyllabusHubScreen(
+                    onBack = { navController.popBackStack() },
                     onOpenSyllabusHeatmap = { navController.navigate(ROUTE_SYLLABUS_HEATMAP) },
                     onOpenRevisionTracker = { navController.navigate(ROUTE_REVISION_TRACKER) },
                 )
