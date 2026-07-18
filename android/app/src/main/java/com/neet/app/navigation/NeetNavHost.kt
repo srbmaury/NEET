@@ -162,9 +162,6 @@ fun NeetNavHost(
                     authRepository = authRepository,
                     syncRepository = syncRepository,
                     onOpenQuestion = { answerId -> navController.navigate("review/$answerId") },
-                    onPracticeTopic = { subject, topic, difficulty ->
-                        navController.navigateToQuestion(subject, topic, difficulty)
-                    },
                     onReviewMistakes = { subject, topic ->
                         navController.navigateToReviewMistakes(subject, topic)
                     },

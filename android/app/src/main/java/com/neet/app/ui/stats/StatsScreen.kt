@@ -41,9 +41,7 @@ import com.neet.app.data.SyncRepository
 import com.neet.app.data.local.AnsweredQuestionEntity
 import com.neet.app.data.local.MistakeTopicStat
 import com.neet.app.data.local.SubjectStat
-import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
-import com.neet.app.domain.Weightage
 import com.neet.app.ui.components.AnswerRecordCard
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -72,7 +70,6 @@ fun StatsScreen(
     authRepository: AuthRepository,
     syncRepository: SyncRepository,
     onOpenQuestion: (String) -> Unit,
-    onPracticeTopic: (Subject, String, Difficulty) -> Unit,
     onReviewMistakes: (Subject, String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSignup: () -> Unit,
@@ -82,7 +79,6 @@ fun StatsScreen(
     val viewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(historyRepository))
     val stats by viewModel.subjectStats.collectAsState()
     val history by viewModel.history.collectAsState()
-    val focusAreas by viewModel.focusAreas.collectAsState()
     val mistakeTopics by viewModel.mistakeTopics.collectAsState()
     val selectedSubject by viewModel.selectedSubject.collectAsState()
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = false)
@@ -153,31 +149,6 @@ fun StatsScreen(
                         },
                         style = MaterialTheme.typography.bodyLarge,
                     )
-                }
-            }
-        }
-
-        if (focusAreas.isNotEmpty()) {
-            item {
-                Text(
-                    "Focus areas",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(focusAreas, key = { "${it.subject}_${it.topic}" }) { focusArea ->
-                        FocusAreaCard(
-                            focusArea = focusArea,
-                            onClick = {
-                                onPracticeTopic(focusArea.subject, focusArea.topic, Difficulty.MEDIUM)
-                            },
-                        )
-                    }
                 }
             }
         }
@@ -334,46 +305,6 @@ private fun MistakeTopicCard(mistake: MistakeTopicStat, onClick: () -> Unit) {
                 "${mistake.wrongCount} wrong",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color(0xFFC62828),
-            )
-        }
-    }
-}
-
-@Composable
-private fun FocusAreaCard(focusArea: FocusArea, onClick: () -> Unit) {
-    val weightageColor = when (focusArea.weightage) {
-        Weightage.HIGH -> Color(0xFFC62828)
-        Weightage.MEDIUM -> Color(0xFFEF6C00)
-        Weightage.LOW -> Color(0xFF616161)
-    }
-    Card(
-        modifier = Modifier.width(200.dp).clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                "${focusArea.weightage.name} weightage",
-                style = MaterialTheme.typography.labelSmall,
-                color = weightageColor,
-            )
-            Text(
-                focusArea.topic,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-            )
-            Text(
-                focusArea.subject.name.lowercase().replaceFirstChar { it.uppercase() },
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-            )
-            Text(
-                if (focusArea.status == FocusStatus.NOT_ATTEMPTED) {
-                    "Not attempted yet"
-                } else {
-                    "${focusArea.accuracyPercent}% accuracy"
-                },
-                style = MaterialTheme.typography.labelMedium,
             )
         }
     }
