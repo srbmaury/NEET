@@ -20,8 +20,7 @@ android/.cxx/
 *.keystore
 
 # Claude Code (local-only)
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
+.claude/
 
 # IntelliJ / Android Studio
 .idea/
