@@ -6,6 +6,7 @@ import com.neet.app.BuildConfig
 import com.neet.app.data.ApiService
 import com.neet.app.data.AuthApiService
 import com.neet.app.data.AuthRepository
+import com.neet.app.data.HealthApiService
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.MockTestApiService
 import com.neet.app.data.MockTestRepository
@@ -121,6 +122,10 @@ object AppContainer {
     // exceed what fits comfortably in the fast client's 35s budget — reuses the same
     // long-timeout client built for mock-test generation rather than a third OkHttp instance.
     val syncApiService: SyncApiService by lazy { mockTestRetrofit.create(SyncApiService::class.java) }
+
+    // A free-tier host can take up to ~60s to wake from a cold start — the long-timeout client
+    // gives that ping room to actually land instead of erroring out before the wake-up completes.
+    val healthApiService: HealthApiService by lazy { mockTestRetrofit.create(HealthApiService::class.java) }
 
     private val database: NeetDatabase by lazy {
         Room.databaseBuilder(appContext, NeetDatabase::class.java, "neet.db")

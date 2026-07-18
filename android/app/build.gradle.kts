@@ -19,13 +19,11 @@ android {
 
     buildTypes {
         debug {
-            // 10.0.2.2 is the Android emulator's alias for the host machine and only resolves
-            // there — a real phone on the same Wi-Fi network needs the host's actual LAN IP.
-            buildConfigField("String", "BASE_URL", "\"http://192.168.1.15:8877/\"")
+            buildConfigField("String", "BASE_URL", "\"https://neet-wxmh.onrender.com/\"")
         }
         release {
             isMinifyEnabled = false
-            buildConfigField("String", "BASE_URL", "\"https://replace-with-deployed-backend-url/\"")
+            buildConfigField("String", "BASE_URL", "\"https://neet-wxmh.onrender.com/\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

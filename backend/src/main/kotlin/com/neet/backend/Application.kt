@@ -16,9 +16,12 @@ import com.neet.backend.routes.mockTestRoutes
 import com.neet.backend.routes.notesRoutes
 import com.neet.backend.routes.questionRoutes
 import com.neet.backend.routes.syncRoutes
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.response.respond
+import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 
 fun main() {
@@ -40,6 +43,9 @@ fun main() {
         val notesRepository = NotesRepository()
         val jwtService = JwtService(config)
         routing {
+            // No DB/OpenAI touch — cheap enough to hit on every app launch just to nudge a
+            // spun-down free-tier host awake before the user's first real request needs it.
+            get("/health") { call.respond(HttpStatusCode.OK) }
             questionRoutes(openAi)
             mockTestRoutes(mockTestGenerator)
             authRoutes(userRepository, jwtService)
