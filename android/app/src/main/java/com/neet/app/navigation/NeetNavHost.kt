@@ -24,11 +24,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.neet.app.data.AuthRepository
-import com.neet.app.data.ExamDateStore
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.MockTestRepository
 import com.neet.app.data.NotesRepository
 import com.neet.app.data.QuestionRepository
+import com.neet.app.data.RevisionRepository
 import com.neet.app.data.SyncRepository
 import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
@@ -45,6 +45,7 @@ import com.neet.app.ui.notes.NotesTopicPickerScreen
 import com.neet.app.ui.picker.TopicPickerScreen
 import com.neet.app.ui.question.QuestionReviewScreen
 import com.neet.app.ui.question.QuestionScreen
+import com.neet.app.ui.revision.RevisionTrackerScreen
 import com.neet.app.ui.smartpractice.SmartPracticeScreen
 import com.neet.app.ui.sprint.SprintScreen
 import com.neet.app.ui.stats.StatsScreen
@@ -69,6 +70,7 @@ private const val ROUTE_SYLLABUS_HEATMAP = "syllabus_heatmap"
 private const val ROUTE_SMART_PRACTICE = "smart_practice"
 private const val ROUTE_SPRINT = "sprint/{subject}/{topic}"
 private const val ROUTE_FLASHCARDS = "flashcards/{subject}/{topic}"
+private const val ROUTE_REVISION_TRACKER = "revision_tracker"
 
 private data class BottomNavTab(val route: String, val label: String)
 
@@ -87,7 +89,7 @@ fun NeetNavHost(
     authRepository: AuthRepository,
     syncRepository: SyncRepository,
     notesRepository: NotesRepository,
-    examDateStore: ExamDateStore,
+    revisionRepository: RevisionRepository,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -149,7 +151,6 @@ fun NeetNavHost(
                     historyRepository = historyRepository,
                     authRepository = authRepository,
                     syncRepository = syncRepository,
-                    examDateStore = examDateStore,
                     onOpenQuestion = { answerId -> navController.navigate("review/$answerId") },
                     onPracticeTopic = { subject, topic, difficulty ->
                         navController.navigateToQuestion(subject, topic, difficulty)
@@ -160,6 +161,7 @@ fun NeetNavHost(
                     onNavigateToLogin = { navController.navigate(ROUTE_LOGIN) },
                     onNavigateToSignup = { navController.navigate(ROUTE_SIGNUP) },
                     onOpenSyllabusHeatmap = { navController.navigate(ROUTE_SYLLABUS_HEATMAP) },
+                    onOpenRevisionTracker = { navController.navigate(ROUTE_REVISION_TRACKER) },
                 )
             }
             composable(ROUTE_LOGIN) {
@@ -311,6 +313,12 @@ fun NeetNavHost(
                     repository = notesRepository,
                     subject = subject,
                     topic = topic,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(ROUTE_REVISION_TRACKER) {
+                RevisionTrackerScreen(
+                    repository = revisionRepository,
                     onBack = { navController.popBackStack() },
                 )
             }

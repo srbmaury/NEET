@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 private const val WEAK_ACCURACY_THRESHOLD = 60
@@ -35,12 +34,6 @@ class StatsViewModel(historyRepository: HistoryRepository) : ViewModel() {
 
     val mistakeTopics: StateFlow<List<MistakeTopicStat>> = historyRepository.mistakeTopicStats()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    private val totalTopicCount = TopicCatalog.allTopics().size
-
-    val syllabusCoveragePercent: StateFlow<Int> = historyRepository.topicStats()
-        .map { stats -> stats.count { it.total > 0 } * 100 / totalTopicCount }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     // Filtering by subject happens before ranking/capping to MAX_FOCUS_AREAS — otherwise a
     // subject's weak high-weightage topics could get crowded out of a global top-10 by other

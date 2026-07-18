@@ -6,7 +6,6 @@ import com.neet.app.BuildConfig
 import com.neet.app.data.ApiService
 import com.neet.app.data.AuthApiService
 import com.neet.app.data.AuthRepository
-import com.neet.app.data.ExamDateStore
 import com.neet.app.data.HealthApiService
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.MockTestApiService
@@ -14,6 +13,7 @@ import com.neet.app.data.MockTestRepository
 import com.neet.app.data.NotesApiService
 import com.neet.app.data.NotesRepository
 import com.neet.app.data.QuestionRepository
+import com.neet.app.data.RevisionRepository
 import com.neet.app.data.SyncApiService
 import com.neet.app.data.SyncRepository
 import com.neet.app.data.auth.SecureTokenStore
@@ -40,8 +40,6 @@ object AppContainer {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val secureTokenStore: SecureTokenStore by lazy { SecureTokenStore(appContext) }
-
-    val examDateStore: ExamDateStore by lazy { ExamDateStore(appContext) }
 
     /** Attaches the auth token when one is stored — a no-op for anyone who never logs in, since
      * accounts are strictly additive here (every existing feature already works without one). */
@@ -145,4 +143,6 @@ object AppContainer {
     }
 
     val syncRepository: SyncRepository by lazy { SyncRepository(syncApiService, historyRepository) }
+
+    val revisionRepository: RevisionRepository by lazy { RevisionRepository(database.revisionDao()) }
 }

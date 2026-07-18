@@ -77,8 +77,11 @@ object TopicNotes : Table("topic_notes") {
     val topic = varchar("topic", 255)
     val contentMarkdown = text("content_markdown")
     // Serialized List<NoteCard> — the same OpenAI call that produces contentMarkdown also
-    // produces these, so flashcard mode never costs a second generation.
-    val cardsJson = text("cards_json")
+    // produces these, so flashcard mode never costs a second generation. Nullable: a NOT NULL
+    // column can't be added to a table with existing rows without a backfill default, and rows
+    // written by any older deploy before this column existed won't have a value — treat null as
+    // "no cards" (an empty list) rather than fighting that migration hazard.
+    val cardsJson = text("cards_json").nullable()
     val generatedAt = long("generated_at")
 
     override val primaryKey = PrimaryKey(subject, topic)

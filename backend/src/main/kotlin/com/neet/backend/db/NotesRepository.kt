@@ -6,7 +6,9 @@ import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
-data class CachedNotes(val contentMarkdown: String, val cardsJson: String)
+/** [cardsJson] is null for rows written before flashcards existed (or by an older deploy) —
+ * callers treat that the same as an empty card list, not as a cache miss. */
+data class CachedNotes(val contentMarkdown: String, val cardsJson: String?)
 
 class NotesRepository {
 

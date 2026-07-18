@@ -24,7 +24,7 @@ fun Route.notesRoutes(notesRepository: NotesRepository, openAi: OpenAiClient) {
 
         val cached = notesRepository.findCached(subject.name, topic)
         if (cached != null) {
-            val cards = json.decodeFromString<List<NoteCard>>(cached.cardsJson)
+            val cards = cached.cardsJson?.let { json.decodeFromString<List<NoteCard>>(it) }.orEmpty()
             call.respond(
                 HttpStatusCode.OK,
                 NotesResponse(subject.name, topic, cached.contentMarkdown, cards, cached = true),
