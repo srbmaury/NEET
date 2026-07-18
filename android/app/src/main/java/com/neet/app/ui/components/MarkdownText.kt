@@ -25,15 +25,20 @@ import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 // than relying solely on prompt compliance.
 private val singleDollarInline = Regex("""(?<!\$)\$(?!\$)([^$\n]+?)(?<!\$)\$(?!\$)""")
 private val singleDollarLine = Regex("""(?m)^(\s*)\$(\s*)$""")
-private val parenDelimited = Regex("""\\\(([^)]*?)\\\)""")
-private val bracketDelimited = Regex("""\\\[([^]]*?)\\]""")
+// Content tolerates one level of nested plain "(...)"/"[...]" — a naive [^)]*? content group
+// breaks the moment the LaTeX itself contains a parenthesized sub-expression like "(2t_f)",
+// leaving the whole \( \) pair unmatched and rendered as literal source text.
+private val parenDelimited = Regex("""\\\(((?:[^()\n]|\([^()\n]*\))*)\\\)""")
+private val bracketDelimited = Regex("""\\\[((?:[^\[\]\n]|\[[^\[\]\n]*\])*)\\]""")
 
 // Catches a different drift: raw LaTeX commands (\frac, \times, \text, ...) sitting inside plain
 // "(...)" parentheses with no math delimiter at all — not even \( \). A backslash followed by
 // letters essentially never appears in ordinary parenthetical English text, so treating that as
 // the signal (rather than e.g. presence of digits or symbols alone) keeps this from misfiring on
-// normal asides like "(displacement in meters)".
-private val looseLatexInParens = Regex("""\(([^()\n]*\\[a-zA-Z]+[^()\n]*)\)""")
+// normal asides like "(displacement in meters)". The content allows one level of nested "(...)"
+// (e.g. "(h = ... (2t_f)^2)") since LaTeX expressions legitimately contain their own parens.
+private val looseLatexInParens =
+    Regex("""\(((?:[^()\n]|\([^()\n]*\))*\\[a-zA-Z]+(?:[^()\n]|\([^()\n]*\))*)\)""")
 
 private fun normalizeLatexDelimiters(markdown: String): String {
     var normalized = singleDollarLine.replace(markdown) { match ->
