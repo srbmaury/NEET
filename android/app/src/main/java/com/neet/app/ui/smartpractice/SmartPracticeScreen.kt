@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -29,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.QuestionRepository
-import com.neet.app.domain.suggestedDifficulty
 import com.neet.app.ui.question.QuestionScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +39,7 @@ fun SmartPracticeScreen(
     modifier: Modifier = Modifier,
 ) {
     val viewModel: SmartPracticeViewModel = viewModel(
-        factory = SmartPracticeViewModelFactory(historyRepository),
+        factory = SmartPracticeViewModelFactory(repository, historyRepository),
     )
     val uiState by viewModel.uiState.collectAsState()
 
@@ -79,20 +77,17 @@ fun SmartPracticeScreen(
         }
         is SmartPracticeUiState.InProgress -> {
             val (subject, topic) = state.queue[state.currentIndex]
-            val stat = viewModel.topicStatsSnapshot.firstOrNull {
-                it.subject == subject.name && it.topic == topic
-            }
-            val difficulty = remember(state.currentIndex) { suggestedDifficulty(stat) }
             key(state.currentIndex) {
                 QuestionScreen(
                     repository = repository,
                     historyRepository = historyRepository,
                     subject = subject,
                     topic = topic,
-                    difficulty = difficulty,
+                    difficulty = state.difficulty,
                     onBack = onBack,
                     onNext = { wasCorrect -> viewModel.advance(wasCorrect) },
                     viewModelKey = "smart_practice_${state.currentIndex}",
+                    preloadedQuestion = state.preloadedQuestion,
                     modifier = modifier,
                 )
             }

@@ -63,13 +63,27 @@ fun QuestionScreen(
     // name within that one shared store and keeps handing back the first (already-answered)
     // instance, no matter how many "different" questions the caller thinks it's requesting.
     viewModelKey: String? = null,
+    // A question already fetched ahead of time by a session ViewModel (Smart Practice, Sprint) for
+    // this exact subject/topic/difficulty — when present, this screen skips its own network call
+    // and shows it immediately instead of a loading spinner.
+    preloadedQuestion: Question? = null,
     // Extra content in the TopAppBar's actions slot — used by Timed Sprint for its countdown chip.
     topBarActions: @Composable RowScope.() -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val viewModel: QuestionViewModel = viewModel(
         key = viewModelKey,
-        factory = QuestionViewModelFactory(repository, historyRepository, subject, topic, difficulty),
+        factory = QuestionViewModelFactory(
+            repository,
+            historyRepository,
+            subject,
+            topic,
+            difficulty,
+            preloadedQuestion = preloadedQuestion,
+            // Plain Practice mode gets no viewModelKey (see its doc above) — a session screen
+            // always supplies one. Same signal, reused rather than adding a redundant param.
+            standalone = viewModelKey == null,
+        ),
     )
     val uiState by viewModel.uiState.collectAsState()
 

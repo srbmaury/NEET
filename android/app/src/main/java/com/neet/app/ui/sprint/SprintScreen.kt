@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,7 +30,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.QuestionRepository
 import com.neet.app.data.model.Subject
-import com.neet.app.domain.suggestedDifficulty
 import com.neet.app.ui.question.QuestionScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +43,7 @@ fun SprintScreen(
     modifier: Modifier = Modifier,
 ) {
     val viewModel: SprintViewModel = viewModel(
-        factory = SprintViewModelFactory(historyRepository, subject, topic),
+        factory = SprintViewModelFactory(repository, historyRepository, subject, topic),
     )
     val uiState by viewModel.uiState.collectAsState()
 
@@ -58,17 +56,17 @@ fun SprintScreen(
             }
         }
         is SprintUiState.InProgress -> {
-            val difficulty = remember(state.questionIndex) { suggestedDifficulty(viewModel.topicStat) }
             key(state.questionIndex) {
                 QuestionScreen(
                     repository = repository,
                     historyRepository = historyRepository,
                     subject = subject,
                     topic = topic,
-                    difficulty = difficulty,
+                    difficulty = state.difficulty,
                     onBack = onBack,
                     onNext = { wasCorrect -> viewModel.advance(wasCorrect) },
                     viewModelKey = "sprint_${state.questionIndex}",
+                    preloadedQuestion = state.preloadedQuestion,
                     topBarActions = {
                         TimerChip(secondsRemaining = state.secondsRemaining, questionIndex = state.questionIndex)
                     },
