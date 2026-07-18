@@ -28,7 +28,11 @@ class NotesViewModel(
         viewModelScope.launch {
             when (val result = repository.getNotes(subject, topic)) {
                 is NotesResult.Success ->
-                    _uiState.value = NotesUiState.Ready(result.notes.contentMarkdown, result.notes.cached)
+                    _uiState.value = NotesUiState.Ready(
+                        contentMarkdown = result.notes.contentMarkdown,
+                        cards = result.notes.cards,
+                        cached = result.notes.cached,
+                    )
                 is NotesResult.Failure -> _uiState.value = NotesUiState.Error(result.message)
             }
         }

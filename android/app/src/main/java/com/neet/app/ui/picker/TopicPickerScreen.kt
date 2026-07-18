@@ -13,29 +13,43 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.neet.app.data.HistoryRepository
 import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
 import com.neet.app.domain.TopicCatalog
+import com.neet.app.domain.suggestedDifficulty
 import com.neet.app.ui.components.TopicRow
 
 @Composable
 fun TopicPickerScreen(
+    historyRepository: HistoryRepository,
     onStartQuestion: (Subject, String, Difficulty) -> Unit,
+    onStartSmartPractice: () -> Unit,
+    onStartSprint: (Subject, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedSubject by remember { mutableStateOf(Subject.BOTANY) }
-    var selectedTopic by remember { mutableStateOf(TopicCatalog.topicsFor(Subject.BOTANY).first()) }
-    var selectedDifficulty by remember { mutableStateOf(Difficulty.MEDIUM) }
+    var selectedSubject by remember { mutableStateOf(Subject.PHYSICS) }
+    var selectedTopic by remember { mutableStateOf(TopicCatalog.topicsFor(Subject.PHYSICS).first()) }
+    val topicStats by historyRepository.topicStats().collectAsState(initial = emptyList())
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+        OutlinedButton(
+            onClick = onStartSmartPractice,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        ) {
+            Text("Smart Practice — auto-mixed weak topics")
+        }
+
         Text("Choose a subject", style = MaterialTheme.typography.titleMedium)
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -70,26 +84,24 @@ fun TopicPickerScreen(
             }
         }
 
-        Text("Difficulty", style = MaterialTheme.typography.titleMedium)
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Difficulty.entries.forEach { difficulty ->
-                FilterChip(
-                    selected = difficulty == selectedDifficulty,
-                    onClick = { selectedDifficulty = difficulty },
-                    label = { Text(difficulty.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                    modifier = Modifier.height(40.dp),
-                )
-            }
-        }
-
         Button(
-            onClick = { onStartQuestion(selectedSubject, selectedTopic, selectedDifficulty) },
+            onClick = {
+                // Difficulty is no longer picked by hand — it's re-rolled fresh on every tap from
+                // a distribution weighted toward Medium/Hard (see suggestedDifficulty), so pressing
+                // "Start practicing" again on the same topic can land a different difficulty.
+                val stat = topicStats.firstOrNull { it.subject == selectedSubject.name && it.topic == selectedTopic }
+                onStartQuestion(selectedSubject, selectedTopic, suggestedDifficulty(stat))
+            },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         ) {
             Text("Start practicing")
+        }
+
+        OutlinedButton(
+            onClick = { onStartSprint(selectedSubject, selectedTopic) },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        ) {
+            Text("Timed Sprint — 10 questions, 10 minutes")
         }
     }
 }

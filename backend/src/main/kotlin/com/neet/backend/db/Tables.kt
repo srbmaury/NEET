@@ -76,6 +76,9 @@ object TopicNotes : Table("topic_notes") {
     val subject = varchar("subject", 32)
     val topic = varchar("topic", 255)
     val contentMarkdown = text("content_markdown")
+    // Serialized List<NoteCard> — the same OpenAI call that produces contentMarkdown also
+    // produces these, so flashcard mode never costs a second generation.
+    val cardsJson = text("cards_json")
     val generatedAt = long("generated_at")
 
     override val primaryKey = PrimaryKey(subject, topic)

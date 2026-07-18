@@ -29,7 +29,7 @@ fun NotesTopicPickerScreen(
     onOpenNotes: (Subject, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedSubject by remember { mutableStateOf(Subject.BOTANY) }
+    var selectedSubject by remember { mutableStateOf(Subject.PHYSICS) }
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         Text("Concepts & formulas", style = MaterialTheme.typography.headlineSmall)

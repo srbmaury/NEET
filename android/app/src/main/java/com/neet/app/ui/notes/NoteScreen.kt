@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -37,6 +39,7 @@ fun NoteScreen(
     subject: Subject,
     topic: String,
     onBack: () -> Unit,
+    onOpenFlashcards: (Subject, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: NotesViewModel = viewModel(
@@ -93,6 +96,14 @@ fun NoteScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                         )
+                        if (state.cards.isNotEmpty()) {
+                            OutlinedButton(
+                                onClick = { onOpenFlashcards(subject, topic) },
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            ) {
+                                Text("Practice as flashcards (${state.cards.size})")
+                            }
+                        }
                         Spacer(Modifier.padding(4.dp))
                         MarkdownText(
                             markdown = state.contentMarkdown,

@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
                         authRepository = AppContainer.authRepository,
                         syncRepository = AppContainer.syncRepository,
                         notesRepository = AppContainer.notesRepository,
+                        examDateStore = AppContainer.examDateStore,
                     )
                 }
             }

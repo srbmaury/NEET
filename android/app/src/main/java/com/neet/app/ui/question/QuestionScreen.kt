@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
@@ -50,9 +51,24 @@ fun QuestionScreen(
     topic: String,
     difficulty: Difficulty,
     onBack: () -> Unit,
+    // When supplied, "Next question" advances a session (Smart Practice, Timed Sprint) instead of
+    // regenerating another question on this same topic — the default null preserves plain
+    // Practice-mode behavior exactly. The Boolean reports whether the just-answered question was
+    // correct, so the session can keep a running score.
+    onNext: ((Boolean) -> Unit)? = null,
+    // Plain Practice mode gets a fresh NavBackStackEntry (and therefore a fresh ViewModelStore)
+    // per question naturally, via the subject/topic/difficulty nav route itself, so it never needed
+    // an explicit key. Smart Practice/Sprint sessions instead cycle through many questions inside
+    // one single route — without a distinct key per question, viewModel() looks itself up by class
+    // name within that one shared store and keeps handing back the first (already-answered)
+    // instance, no matter how many "different" questions the caller thinks it's requesting.
+    viewModelKey: String? = null,
+    // Extra content in the TopAppBar's actions slot — used by Timed Sprint for its countdown chip.
+    topBarActions: @Composable RowScope.() -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val viewModel: QuestionViewModel = viewModel(
+        key = viewModelKey,
         factory = QuestionViewModelFactory(repository, historyRepository, subject, topic, difficulty),
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -67,6 +83,7 @@ fun QuestionScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = topBarActions,
             )
         },
     ) { innerPadding ->
@@ -117,7 +134,10 @@ fun QuestionScreen(
                             ExplanationCard(state.question)
                             Spacer(Modifier.padding(12.dp))
                             Button(
-                                onClick = { viewModel.loadQuestion() },
+                                onClick = {
+                                    val wasCorrect = state.selectedOptionKey == state.question.correctOptionKey
+                                    onNext?.invoke(wasCorrect) ?: viewModel.loadQuestion()
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text("Next question")

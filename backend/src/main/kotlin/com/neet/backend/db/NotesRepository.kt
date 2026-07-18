@@ -6,25 +6,29 @@ import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
+data class CachedNotes(val contentMarkdown: String, val cardsJson: String)
+
 class NotesRepository {
 
-    suspend fun findCached(subject: String, topic: String): String? = withContext(Dispatchers.IO) {
+    suspend fun findCached(subject: String, topic: String): CachedNotes? = withContext(Dispatchers.IO) {
         transaction {
             TopicNotes.selectAll()
                 .where { (TopicNotes.subject eq subject) and (TopicNotes.topic eq topic) }
                 .firstOrNull()
-                ?.get(TopicNotes.contentMarkdown)
+                ?.let { CachedNotes(it[TopicNotes.contentMarkdown], it[TopicNotes.cardsJson]) }
         }
     }
 
-    suspend fun save(subject: String, topic: String, contentMarkdown: String) = withContext(Dispatchers.IO) {
-        transaction {
-            TopicNotes.upsert {
-                it[TopicNotes.subject] = subject
-                it[TopicNotes.topic] = topic
-                it[TopicNotes.contentMarkdown] = contentMarkdown
-                it[generatedAt] = System.currentTimeMillis()
+    suspend fun save(subject: String, topic: String, contentMarkdown: String, cardsJson: String) =
+        withContext(Dispatchers.IO) {
+            transaction {
+                TopicNotes.upsert {
+                    it[TopicNotes.subject] = subject
+                    it[TopicNotes.topic] = topic
+                    it[TopicNotes.contentMarkdown] = contentMarkdown
+                    it[TopicNotes.cardsJson] = cardsJson
+                    it[generatedAt] = System.currentTimeMillis()
+                }
             }
         }
-    }
 }

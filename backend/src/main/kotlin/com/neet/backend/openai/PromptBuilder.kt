@@ -181,6 +181,15 @@ object PromptBuilder {
         - A few common mistakes or easily-confused points specific to this topic, if any
           are genuinely notable (omit this section entirely rather than padding it).
 
+        Additionally, produce the SAME concepts and formulas again as `cards` — one entry per
+        concept and per formula from contentMarkdown, each with:
+        - term: the concept name, or the formula itself written compactly (e.g. "v = u + at")
+        - content: the one-to-two sentence explanation (concepts), or the symbol meanings and
+          when it applies (formulas) — this is what shows on the back of the flashcard
+        - type: "CONCEPT" or "FORMULA"
+        Every concept and formula in contentMarkdown must have a corresponding card, and vice
+        versa — the two are two views of the same material, not independent content.
+
         $formattingRules
 
         Output must match the provided JSON schema exactly, with no extra commentary.

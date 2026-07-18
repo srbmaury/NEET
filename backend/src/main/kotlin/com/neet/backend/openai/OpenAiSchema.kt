@@ -40,9 +40,14 @@ data class VerifiedAnswer(
 )
 
 /** Reference notes for a topic — no "correct answer" concept here, so unlike question
- * generation this doesn't need an independent verification pass. */
+ * generation this doesn't need an independent verification pass. [cards] are the same
+ * concepts/formulas as [contentMarkdown], broken into individual flashcard-sized pieces —
+ * generated in the same call rather than a second one. */
 @Serializable
-data class GeneratedNotes(val contentMarkdown: String)
+data class GeneratedNotes(val contentMarkdown: String, val cards: List<NoteCard>)
+
+@Serializable
+data class NoteCard(val term: String, val content: String, val type: String)
 
 /** Wrapper for batch generation — OpenAI's structured outputs require an object at the root,
  * not a bare array, so batches are wrapped in a single named array property. */
@@ -192,12 +197,30 @@ object OpenAiSchema {
         }
     }
 
+    private val noteCardSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("term") { put("type", "string") }
+            putJsonObject("content") { put("type", "string") }
+            putJsonObject("type") {
+                put("type", "string")
+                put("enum", buildJsonArray { add("CONCEPT"); add("FORMULA") })
+            }
+        }
+        put("required", buildJsonArray { add("term"); add("content"); add("type") })
+        put("additionalProperties", false)
+    }
+
     private val notesSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
             putJsonObject("contentMarkdown") { put("type", "string") }
+            putJsonObject("cards") {
+                put("type", "array")
+                put("items", noteCardSchema)
+            }
         }
-        put("required", buildJsonArray { add("contentMarkdown") })
+        put("required", buildJsonArray { add("contentMarkdown"); add("cards") })
         put("additionalProperties", false)
     }
 

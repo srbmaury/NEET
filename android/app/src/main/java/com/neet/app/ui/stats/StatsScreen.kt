@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neet.app.data.AuthRepository
+import com.neet.app.data.ExamDateStore
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.SyncRepository
 import com.neet.app.data.local.AnsweredQuestionEntity
@@ -71,11 +72,13 @@ fun StatsScreen(
     historyRepository: HistoryRepository,
     authRepository: AuthRepository,
     syncRepository: SyncRepository,
+    examDateStore: ExamDateStore,
     onOpenQuestion: (String) -> Unit,
     onPracticeTopic: (Subject, String, Difficulty) -> Unit,
     onReviewMistakes: (Subject, String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSignup: () -> Unit,
+    onOpenSyllabusHeatmap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(historyRepository))
@@ -83,9 +86,11 @@ fun StatsScreen(
     val history by viewModel.history.collectAsState()
     val focusAreas by viewModel.focusAreas.collectAsState()
     val mistakeTopics by viewModel.mistakeTopics.collectAsState()
+    val syllabusCoveragePercent by viewModel.syllabusCoveragePercent.collectAsState()
     val selectedSubject by viewModel.selectedSubject.collectAsState()
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = false)
     val accountEmail by authRepository.accountEmail.collectAsState(initial = null)
+    val examDateEpochDay by examDateStore.examDateFlow().collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
 
     // Cloud sync (via the account below) replaced manual backup/restore — quietly keep this
@@ -110,6 +115,17 @@ fun StatsScreen(
     ) {
         item {
             Text("Your progress", style = MaterialTheme.typography.headlineSmall)
+        }
+
+        item {
+            ExamCountdownCard(
+                examDateEpochDay = examDateEpochDay,
+                coveragePercent = syllabusCoveragePercent,
+                onExamDateSelected = { epochDay ->
+                    coroutineScope.launch { examDateStore.saveExamDate(epochDay) }
+                },
+                modifier = Modifier.padding(top = 12.dp),
+            )
         }
 
         item {
@@ -168,6 +184,17 @@ fun StatsScreen(
                     }
                 }
             }
+        }
+
+        item {
+            Text(
+                "View full syllabus →",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable(onClick = onOpenSyllabusHeatmap)
+                    .padding(bottom = 12.dp),
+            )
         }
 
         if (mistakeTopics.isNotEmpty()) {

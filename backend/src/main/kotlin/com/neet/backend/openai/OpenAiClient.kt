@@ -117,7 +117,7 @@ class OpenAiClient(private val config: AppConfig) {
      * own stated answer, which doesn't apply here. Cheap regardless, since the caller (see
      * NotesRoutes) caches the result in Postgres and never asks twice for the same topic.
      */
-    suspend fun generateNotes(subject: String, topic: String): String {
+    suspend fun generateNotes(subject: String, topic: String): GeneratedNotes {
         val chatRequest = OpenAiChatRequest(
             model = config.openAiModel,
             messages = listOf(
@@ -130,7 +130,7 @@ class OpenAiClient(private val config: AppConfig) {
             .recoverCatching { callOpenAi(chatRequest) }
             .getOrElse { throw OpenAiException("Failed to generate notes from OpenAI", it) }
 
-        return runCatching { json.decodeFromString<GeneratedNotes>(content).contentMarkdown }
+        return runCatching { json.decodeFromString<GeneratedNotes>(content) }
             .getOrElse { throw OpenAiException("OpenAI returned malformed notes JSON", it) }
     }
 

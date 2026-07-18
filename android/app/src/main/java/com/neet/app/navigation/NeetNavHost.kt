@@ -24,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.neet.app.data.AuthRepository
+import com.neet.app.data.ExamDateStore
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.MockTestRepository
 import com.neet.app.data.NotesRepository
@@ -33,6 +34,8 @@ import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
 import com.neet.app.ui.auth.LoginScreen
 import com.neet.app.ui.auth.SignupScreen
+import com.neet.app.ui.flashcards.FlashcardsScreen
+import com.neet.app.ui.heatmap.SyllabusHeatmapScreen
 import com.neet.app.ui.mistakes.ReviewMistakesScreen
 import com.neet.app.ui.mocktest.MockTestHomeScreen
 import com.neet.app.ui.mocktest.MockTestResultScreen
@@ -42,6 +45,8 @@ import com.neet.app.ui.notes.NotesTopicPickerScreen
 import com.neet.app.ui.picker.TopicPickerScreen
 import com.neet.app.ui.question.QuestionReviewScreen
 import com.neet.app.ui.question.QuestionScreen
+import com.neet.app.ui.smartpractice.SmartPracticeScreen
+import com.neet.app.ui.sprint.SprintScreen
 import com.neet.app.ui.stats.StatsScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -60,6 +65,10 @@ private const val ROUTE_SIGNUP = "signup"
 private const val ROUTE_NOTES_PICKER = "notes_picker"
 private const val ROUTE_NOTES = "notes/{subject}/{topic}"
 private const val ROUTE_REVIEW_MISTAKES = "review_mistakes/{subject}/{topic}"
+private const val ROUTE_SYLLABUS_HEATMAP = "syllabus_heatmap"
+private const val ROUTE_SMART_PRACTICE = "smart_practice"
+private const val ROUTE_SPRINT = "sprint/{subject}/{topic}"
+private const val ROUTE_FLASHCARDS = "flashcards/{subject}/{topic}"
 
 private data class BottomNavTab(val route: String, val label: String)
 
@@ -78,6 +87,7 @@ fun NeetNavHost(
     authRepository: AuthRepository,
     syncRepository: SyncRepository,
     notesRepository: NotesRepository,
+    examDateStore: ExamDateStore,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -99,9 +109,39 @@ fun NeetNavHost(
         ) {
             composable(ROUTE_PICKER) {
                 TopicPickerScreen(
+                    historyRepository = historyRepository,
                     onStartQuestion = { subject, topic, difficulty ->
                         navController.navigateToQuestion(subject, topic, difficulty)
                     },
+                    onStartSmartPractice = { navController.navigate(ROUTE_SMART_PRACTICE) },
+                    onStartSprint = { subject, topic -> navController.navigateToSprint(subject, topic) },
+                )
+            }
+            composable(ROUTE_SMART_PRACTICE) {
+                SmartPracticeScreen(
+                    repository = repository,
+                    historyRepository = historyRepository,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = ROUTE_SPRINT,
+                arguments = listOf(
+                    navArgument("subject") { type = NavType.StringType },
+                    navArgument("topic") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val subject = Subject.valueOf(backStackEntry.arguments?.getString("subject").orEmpty())
+                val topic = URLDecoder.decode(
+                    backStackEntry.arguments?.getString("topic").orEmpty(),
+                    StandardCharsets.UTF_8.name(),
+                )
+                SprintScreen(
+                    repository = repository,
+                    historyRepository = historyRepository,
+                    subject = subject,
+                    topic = topic,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(ROUTE_STATS) {
@@ -109,6 +149,7 @@ fun NeetNavHost(
                     historyRepository = historyRepository,
                     authRepository = authRepository,
                     syncRepository = syncRepository,
+                    examDateStore = examDateStore,
                     onOpenQuestion = { answerId -> navController.navigate("review/$answerId") },
                     onPracticeTopic = { subject, topic, difficulty ->
                         navController.navigateToQuestion(subject, topic, difficulty)
@@ -118,6 +159,7 @@ fun NeetNavHost(
                     },
                     onNavigateToLogin = { navController.navigate(ROUTE_LOGIN) },
                     onNavigateToSignup = { navController.navigate(ROUTE_SIGNUP) },
+                    onOpenSyllabusHeatmap = { navController.navigate(ROUTE_SYLLABUS_HEATMAP) },
                 )
             }
             composable(ROUTE_LOGIN) {
@@ -248,6 +290,28 @@ fun NeetNavHost(
                     subject = subject,
                     topic = topic,
                     onBack = { navController.popBackStack() },
+                    onOpenFlashcards = { flashcardSubject, flashcardTopic ->
+                        navController.navigateToFlashcards(flashcardSubject, flashcardTopic)
+                    },
+                )
+            }
+            composable(
+                route = ROUTE_FLASHCARDS,
+                arguments = listOf(
+                    navArgument("subject") { type = NavType.StringType },
+                    navArgument("topic") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val subject = Subject.valueOf(backStackEntry.arguments?.getString("subject").orEmpty())
+                val topic = URLDecoder.decode(
+                    backStackEntry.arguments?.getString("topic").orEmpty(),
+                    StandardCharsets.UTF_8.name(),
+                )
+                FlashcardsScreen(
+                    repository = notesRepository,
+                    subject = subject,
+                    topic = topic,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(
@@ -273,6 +337,15 @@ fun NeetNavHost(
                     },
                 )
             }
+            composable(ROUTE_SYLLABUS_HEATMAP) {
+                SyllabusHeatmapScreen(
+                    historyRepository = historyRepository,
+                    onBack = { navController.popBackStack() },
+                    onPracticeTopic = { subject, topic, difficulty ->
+                        navController.navigateToQuestion(subject, topic, difficulty)
+                    },
+                )
+            }
         }
     }
 }
@@ -285,6 +358,16 @@ private fun NavController.navigateToQuestion(subject: Subject, topic: String, di
 private fun NavController.navigateToNotes(subject: Subject, topic: String) {
     val encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name())
     navigate("notes/${subject.name}/$encodedTopic")
+}
+
+private fun NavController.navigateToFlashcards(subject: Subject, topic: String) {
+    val encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name())
+    navigate("flashcards/${subject.name}/$encodedTopic")
+}
+
+private fun NavController.navigateToSprint(subject: Subject, topic: String) {
+    val encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name())
+    navigate("sprint/${subject.name}/$encodedTopic")
 }
 
 private fun NavController.navigateToReviewMistakes(subject: Subject, topic: String) {
