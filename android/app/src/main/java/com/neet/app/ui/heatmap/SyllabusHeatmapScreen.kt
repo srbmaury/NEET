@@ -101,6 +101,15 @@ private fun HeatmapRow(entry: HeatmapEntry, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
-        Text(badgeText, style = MaterialTheme.typography.labelMedium, color = badgeColor)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (entry.total > 0) {
+                Text(
+                    "${entry.total} practiced",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+            Text(badgeText, style = MaterialTheme.typography.labelMedium, color = badgeColor)
+        }
     }
 }
