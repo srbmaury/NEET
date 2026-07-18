@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -22,14 +23,21 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.neet.app.data.AuthRepository
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.MockTestRepository
+import com.neet.app.data.NotesRepository
 import com.neet.app.data.QuestionRepository
+import com.neet.app.data.SyncRepository
 import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
+import com.neet.app.ui.auth.LoginScreen
+import com.neet.app.ui.auth.SignupScreen
 import com.neet.app.ui.mocktest.MockTestHomeScreen
 import com.neet.app.ui.mocktest.MockTestResultScreen
 import com.neet.app.ui.mocktest.MockTestScreen
+import com.neet.app.ui.notes.NoteScreen
+import com.neet.app.ui.notes.NotesTopicPickerScreen
 import com.neet.app.ui.picker.TopicPickerScreen
 import com.neet.app.ui.question.QuestionReviewScreen
 import com.neet.app.ui.question.QuestionScreen
@@ -46,12 +54,17 @@ private const val ROUTE_MOCK_TEST_HOME = "mock_test_home"
 private const val ROUTE_MOCK_TEST_TAKING = "mock_test/{testId}"
 private const val ROUTE_MOCK_TEST_REVIEW = "mock_test_review/{testId}"
 private const val ROUTE_MOCK_TEST_RESULT = "mock_test_result/{testId}"
+private const val ROUTE_LOGIN = "login"
+private const val ROUTE_SIGNUP = "signup"
+private const val ROUTE_NOTES_PICKER = "notes_picker"
+private const val ROUTE_NOTES = "notes/{subject}/{topic}"
 
 private data class BottomNavTab(val route: String, val label: String)
 
 private val bottomNavTabs = listOf(
     BottomNavTab(ROUTE_PICKER, "Practice"),
     BottomNavTab(ROUTE_MOCK_TEST_HOME, "Mock Test"),
+    BottomNavTab(ROUTE_NOTES_PICKER, "Notes"),
     BottomNavTab(ROUTE_STATS, "Progress"),
 )
 
@@ -60,6 +73,9 @@ fun NeetNavHost(
     repository: QuestionRepository,
     historyRepository: HistoryRepository,
     mockTestRepository: MockTestRepository,
+    authRepository: AuthRepository,
+    syncRepository: SyncRepository,
+    notesRepository: NotesRepository,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -89,9 +105,35 @@ fun NeetNavHost(
             composable(ROUTE_STATS) {
                 StatsScreen(
                     historyRepository = historyRepository,
+                    authRepository = authRepository,
+                    syncRepository = syncRepository,
                     onOpenQuestion = { answerId -> navController.navigate("review/$answerId") },
                     onPracticeTopic = { subject, topic, difficulty ->
                         navController.navigateToQuestion(subject, topic, difficulty)
+                    },
+                    onNavigateToLogin = { navController.navigate(ROUTE_LOGIN) },
+                    onNavigateToSignup = { navController.navigate(ROUTE_SIGNUP) },
+                )
+            }
+            composable(ROUTE_LOGIN) {
+                LoginScreen(
+                    authRepository = authRepository,
+                    syncRepository = syncRepository,
+                    onBack = { navController.popBackStack() },
+                    onLoggedIn = { navController.popBackStack() },
+                    onGoToSignup = {
+                        navController.navigate(ROUTE_SIGNUP) { popUpTo(ROUTE_LOGIN) { inclusive = true } }
+                    },
+                )
+            }
+            composable(ROUTE_SIGNUP) {
+                SignupScreen(
+                    authRepository = authRepository,
+                    syncRepository = syncRepository,
+                    onBack = { navController.popBackStack() },
+                    onSignedUp = { navController.popBackStack() },
+                    onGoToLogin = {
+                        navController.navigate(ROUTE_LOGIN) { popUpTo(ROUTE_SIGNUP) { inclusive = true } }
                     },
                 )
             }
@@ -179,6 +221,30 @@ fun NeetNavHost(
                     onReview = { reviewTestId -> navController.navigate("mock_test_review/$reviewTestId") },
                 )
             }
+            composable(ROUTE_NOTES_PICKER) {
+                NotesTopicPickerScreen(
+                    onOpenNotes = { subject, topic -> navController.navigateToNotes(subject, topic) },
+                )
+            }
+            composable(
+                route = ROUTE_NOTES,
+                arguments = listOf(
+                    navArgument("subject") { type = NavType.StringType },
+                    navArgument("topic") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val subject = Subject.valueOf(backStackEntry.arguments?.getString("subject").orEmpty())
+                val topic = URLDecoder.decode(
+                    backStackEntry.arguments?.getString("topic").orEmpty(),
+                    StandardCharsets.UTF_8.name(),
+                )
+                NoteScreen(
+                    repository = notesRepository,
+                    subject = subject,
+                    topic = topic,
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
     }
 }
@@ -186,6 +252,11 @@ fun NeetNavHost(
 private fun NavController.navigateToQuestion(subject: Subject, topic: String, difficulty: Difficulty) {
     val encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name())
     navigate("question/${subject.name}/$encodedTopic/${difficulty.name}")
+}
+
+private fun NavController.navigateToNotes(subject: Subject, topic: String) {
+    val encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name())
+    navigate("notes/${subject.name}/$encodedTopic")
 }
 
 @Composable
@@ -208,6 +279,7 @@ private fun NeetBottomBar(navController: NavHostController) {
                     val icon = when (tab.route) {
                         ROUTE_PICKER -> Icons.Filled.Edit
                         ROUTE_MOCK_TEST_HOME -> Icons.AutoMirrored.Filled.List
+                        ROUTE_NOTES_PICKER -> Icons.Filled.Info
                         else -> Icons.Filled.CheckCircle
                     }
                     Icon(icon, contentDescription = tab.label)

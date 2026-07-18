@@ -39,6 +39,11 @@ data class VerifiedAnswer(
     val explanation: GeneratedExplanation,
 )
 
+/** Reference notes for a topic — no "correct answer" concept here, so unlike question
+ * generation this doesn't need an independent verification pass. */
+@Serializable
+data class GeneratedNotes(val contentMarkdown: String)
+
 /** Wrapper for batch generation — OpenAI's structured outputs require an object at the root,
  * not a bare array, so batches are wrapped in a single named array property. */
 @Serializable
@@ -184,6 +189,24 @@ object OpenAiSchema {
                 put("required", buildJsonArray { add("verifications") })
                 put("additionalProperties", false)
             }
+        }
+    }
+
+    private val notesSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("contentMarkdown") { put("type", "string") }
+        }
+        put("required", buildJsonArray { add("contentMarkdown") })
+        put("additionalProperties", false)
+    }
+
+    val notesResponseFormat: JsonObject = buildJsonObject {
+        put("type", "json_schema")
+        putJsonObject("json_schema") {
+            put("name", "neet_topic_notes")
+            put("strict", true)
+            put("schema", notesSchema)
         }
     }
 }

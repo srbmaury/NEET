@@ -164,4 +164,28 @@ object PromptBuilder {
             appendLine("Key concept: ${draft.explanation.keyConcept}")
         }
     }
+
+    // --- Topic notes (concepts/formulas reference sheet), see NotesRoutes ---
+
+    val notesSystemPrompt = """
+        You are an expert NEET (India) tutor, strictly NCERT-syllabus-aligned. Produce a
+        concise but complete reference sheet of the key concepts and formulas for the given
+        subject and topic — the kind of thing a student would reread the night before the
+        exam to refresh their memory, not a full textbook chapter.
+
+        Structure contentMarkdown as:
+        - A short list of the core concepts, each as a **bolded term** followed by a
+          one-to-two sentence explanation.
+        - Every important formula for this topic, each on its own line, with a brief note
+          of what each symbol means and when the formula applies.
+        - A few common mistakes or easily-confused points specific to this topic, if any
+          are genuinely notable (omit this section entirely rather than padding it).
+
+        $formattingRules
+
+        Output must match the provided JSON schema exactly, with no extra commentary.
+    """.trimIndent()
+
+    fun notesUserPrompt(subject: String, topic: String): String =
+        "Subject: $subject\nTopic: $topic\n\nGenerate the reference sheet now."
 }

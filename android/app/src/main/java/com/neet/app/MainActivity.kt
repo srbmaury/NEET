@@ -23,6 +23,9 @@ class MainActivity : ComponentActivity() {
                         repository = AppContainer.questionRepository,
                         historyRepository = AppContainer.historyRepository,
                         mockTestRepository = AppContainer.mockTestRepository,
+                        authRepository = AppContainer.authRepository,
+                        syncRepository = AppContainer.syncRepository,
+                        notesRepository = AppContainer.notesRepository,
                     )
                 }
             }

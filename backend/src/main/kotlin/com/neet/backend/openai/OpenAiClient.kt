@@ -111,6 +111,30 @@ class OpenAiClient(private val config: AppConfig) {
     }
 
     /**
+     * Generates a topic reference sheet — a single call, no independent verification pass.
+     * Unlike questions, notes have no "correct answer" to fact-check against a proposed one;
+     * the generate+verify pattern exists specifically to catch a model self-contradicting its
+     * own stated answer, which doesn't apply here. Cheap regardless, since the caller (see
+     * NotesRoutes) caches the result in Postgres and never asks twice for the same topic.
+     */
+    suspend fun generateNotes(subject: String, topic: String): String {
+        val chatRequest = OpenAiChatRequest(
+            model = config.openAiModel,
+            messages = listOf(
+                OpenAiMessage(role = "system", content = PromptBuilder.notesSystemPrompt),
+                OpenAiMessage(role = "user", content = PromptBuilder.notesUserPrompt(subject, topic)),
+            ),
+            responseFormat = OpenAiSchema.notesResponseFormat,
+        )
+        val content = runCatching { callOpenAi(chatRequest) }
+            .recoverCatching { callOpenAi(chatRequest) }
+            .getOrElse { throw OpenAiException("Failed to generate notes from OpenAI", it) }
+
+        return runCatching { json.decodeFromString<GeneratedNotes>(content).contentMarkdown }
+            .getOrElse { throw OpenAiException("OpenAI returned malformed notes JSON", it) }
+    }
+
+    /**
      * Generates a batch of questions for a mock test — one OpenAI call to draft all of
      * [slots] at once, then one call to independently verify the whole batch. Used instead
      * of calling [generateQuestion] per slot to keep a 200-question mock test to a small

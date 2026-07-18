@@ -1,8 +1,7 @@
 package com.neet.app.ui.stats
 
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,24 +26,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.neet.app.data.AuthRepository
 import com.neet.app.data.HistoryRepository
+import com.neet.app.data.SyncRepository
 import com.neet.app.data.local.AnsweredQuestionEntity
 import com.neet.app.data.local.SubjectStat
 import com.neet.app.data.model.Difficulty
 import com.neet.app.data.model.Subject
 import com.neet.app.domain.Weightage
 import com.neet.app.ui.components.MarkdownText
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -63,11 +63,16 @@ private fun dateLabelFor(date: LocalDate): String {
 private fun answeredDate(record: AnsweredQuestionEntity): LocalDate =
     Instant.ofEpochMilli(record.answeredAt).atZone(ZoneId.systemDefault()).toLocalDate()
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StatsScreen(
     historyRepository: HistoryRepository,
+    authRepository: AuthRepository,
+    syncRepository: SyncRepository,
     onOpenQuestion: (String) -> Unit,
     onPracticeTopic: (Subject, String, Difficulty) -> Unit,
+    onNavigateToLogin: () -> Unit,
+    onNavigateToSignup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(historyRepository))
@@ -75,48 +80,15 @@ fun StatsScreen(
     val history by viewModel.history.collectAsState()
     val focusAreas by viewModel.focusAreas.collectAsState()
     val selectedSubject by viewModel.selectedSubject.collectAsState()
-
-    val context = LocalContext.current
+    val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = false)
+    val accountEmail by authRepository.accountEmail.collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
 
-    val backupLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        coroutineScope.launch {
-            runCatching {
-                val backupJson = historyRepository.exportBackupJson()
-                withContext(Dispatchers.IO) {
-                    context.contentResolver.openOutputStream(uri)?.use { out ->
-                        out.write(backupJson.toByteArray())
-                    }
-                }
-            }.onSuccess {
-                Toast.makeText(context, "Backup saved", Toast.LENGTH_SHORT).show()
-            }.onFailure { error ->
-                Toast.makeText(context, "Backup failed: ${error.message}", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    val restoreLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        coroutineScope.launch {
-            runCatching {
-                val backupJson = withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                        ?: error("Could not read the selected file")
-                }
-                historyRepository.importBackupJson(backupJson)
-            }.onSuccess { result ->
-                val message = "Restored ${result.answerCount} answers, ${result.mockTestCount} mock tests"
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }.onFailure { error ->
-                Toast.makeText(context, "Restore failed: ${error.message}", Toast.LENGTH_LONG).show()
-            }
-        }
+    // Cloud sync (via the account below) replaced manual backup/restore — quietly keep this
+    // device's data current with the server each time this screen is opened while signed in,
+    // rather than requiring an explicit "Sync Now" tap.
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) syncRepository.syncNow()
     }
 
     val totalAnswered = stats.sumOf { it.total }
@@ -124,110 +96,170 @@ fun StatsScreen(
     val statsBySubject = stats.associateBy { it.subject }
     val filteredHistory = history.filter { it.subject == selectedSubject.name }
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
+    // Single scrollable list for the whole screen (rather than a fixed header above a separately
+    // scrolling history list) — the subject tabs are pinned via stickyHeader so switching subjects
+    // stays reachable without scrolling back up, once the account/overall/focus-areas content
+    // above it has scrolled out of view.
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+    ) {
+        item {
             Text("Your progress", style = MaterialTheme.typography.headlineSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { backupLauncher.launch("neet_backup.json") }) {
-                    Text("Backup")
-                }
-                OutlinedButton(onClick = { restoreLauncher.launch(arrayOf("application/json")) }) {
-                    Text("Restore")
-                }
-            }
         }
 
-        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Overall", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    if (totalAnswered == 0) {
-                        "No questions answered yet"
-                    } else {
-                        "$totalCorrect / $totalAnswered correct (${percent(totalCorrect, totalAnswered)}%)"
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-        }
-
-        if (focusAreas.isNotEmpty()) {
-            Text(
-                "Focus areas",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 4.dp),
+        item {
+            AccountSection(
+                isLoggedIn = isLoggedIn,
+                accountEmail = accountEmail,
+                onSignIn = onNavigateToLogin,
+                onSignUp = onNavigateToSignup,
+                onLogOut = {
+                    coroutineScope.launch {
+                        // Push before dropping the token, so the latest local state (anything since
+                        // the last silent sync) is saved server-side before it gets harder to reach.
+                        syncRepository.push()
+                        authRepository.logout()
+                    }
+                },
             )
-            LazyRow(
-                contentPadding = PaddingValues(bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(focusAreas, key = { "${it.subject}_${it.topic}" }) { focusArea ->
-                    FocusAreaCard(
-                        focusArea = focusArea,
-                        onClick = {
-                            onPracticeTopic(focusArea.subject, focusArea.topic, Difficulty.MEDIUM)
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Overall", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (totalAnswered == 0) {
+                            "No questions answered yet"
+                        } else {
+                            "$totalCorrect / $totalAnswered correct (${percent(totalCorrect, totalAnswered)}%)"
                         },
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Subject.entries.forEach { subject ->
-                val subjectStat = statsBySubject[subject.name]
-                val label = subject.name.lowercase().replaceFirstChar { it.uppercase() } +
-                    if (subjectStat != null) " ${subjectStat.correct}/${subjectStat.total}" else ""
-                FilterChip(
-                    selected = subject == selectedSubject,
-                    onClick = { viewModel.selectSubject(subject) },
-                    label = { Text(label) },
+        if (focusAreas.isNotEmpty()) {
+            item {
+                Text(
+                    "Focus areas",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp),
                 )
+            }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(focusAreas, key = { "${it.subject}_${it.topic}" }) { focusArea ->
+                        FocusAreaCard(
+                            focusArea = focusArea,
+                            onClick = {
+                                onPracticeTopic(focusArea.subject, focusArea.topic, Difficulty.MEDIUM)
+                            },
+                        )
+                    }
+                }
             }
         }
 
-        Text(
-            "Recent answers",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
+        stickyHeader(key = "subject_tabs") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Subject.entries.forEach { subject ->
+                    val subjectStat = statsBySubject[subject.name]
+                    val label = subject.name.lowercase().replaceFirstChar { it.uppercase() } +
+                        if (subjectStat != null) " ${subjectStat.correct}/${subjectStat.total}" else ""
+                    FilterChip(
+                        selected = subject == selectedSubject,
+                        onClick = { viewModel.selectSubject(subject) },
+                        label = { Text(label) },
+                    )
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Recent answers",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            )
+        }
 
         if (filteredHistory.isEmpty()) {
-            Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Text(
-                    "No questions answered in " +
-                        selectedSubject.name.lowercase().replaceFirstChar { it.uppercase() } + " yet",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
+            item {
+                Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    Text(
+                        "No questions answered in " +
+                            selectedSubject.name.lowercase().replaceFirstChar { it.uppercase() } + " yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
             }
         } else {
             val groupedByDate = filteredHistory.groupBy { answeredDate(it) }
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                groupedByDate.forEach { (date, entriesForDate) ->
-                    item(key = "date_$date") {
-                        Text(
-                            dateLabelFor(date),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
-                        )
-                    }
-                    items(entriesForDate, key = { it.id }) { record ->
-                        HistoryCard(record, onClick = { onOpenQuestion(record.id) })
-                    }
+            groupedByDate.forEach { (date, entriesForDate) ->
+                item(key = "date_$date") {
+                    Text(
+                        dateLabelFor(date),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                    )
+                }
+                items(entriesForDate, key = { it.id }) { record ->
+                    HistoryCard(record, onClick = { onOpenQuestion(record.id) }, modifier = Modifier.padding(bottom = 8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountSection(
+    isLoggedIn: Boolean,
+    accountEmail: String?,
+    onSignIn: () -> Unit,
+    onSignUp: () -> Unit,
+    onLogOut: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            if (isLoggedIn) {
+                Text("Signed in", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    accountEmail ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Spacer(Modifier.padding(top = 8.dp))
+                OutlinedButton(onClick = onLogOut) { Text("Log Out") }
+            } else {
+                Text("Sync across devices", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    "Optional — practice works fully without an account",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Spacer(Modifier.padding(top = 8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onSignUp) { Text("Sign Up") }
+                    OutlinedButton(onClick = onSignIn) { Text("Log In") }
                 }
             }
         }
@@ -275,9 +307,9 @@ private fun FocusAreaCard(focusArea: FocusArea, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HistoryCard(record: AnsweredQuestionEntity, onClick: () -> Unit) {
+private fun HistoryCard(record: AnsweredQuestionEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(8.dp),
     ) {

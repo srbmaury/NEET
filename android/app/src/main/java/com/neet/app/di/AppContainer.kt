@@ -4,12 +4,22 @@ import android.content.Context
 import androidx.room.Room
 import com.neet.app.BuildConfig
 import com.neet.app.data.ApiService
+import com.neet.app.data.AuthApiService
+import com.neet.app.data.AuthRepository
 import com.neet.app.data.HistoryRepository
 import com.neet.app.data.MockTestApiService
 import com.neet.app.data.MockTestRepository
+import com.neet.app.data.NotesApiService
+import com.neet.app.data.NotesRepository
 import com.neet.app.data.QuestionRepository
+import com.neet.app.data.SyncApiService
+import com.neet.app.data.SyncRepository
+import com.neet.app.data.auth.SecureTokenStore
 import com.neet.app.data.local.NeetDatabase
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -27,6 +37,22 @@ object AppContainer {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    private val secureTokenStore: SecureTokenStore by lazy { SecureTokenStore(appContext) }
+
+    /** Attaches the auth token when one is stored — a no-op for anyone who never logs in, since
+     * accounts are strictly additive here (every existing feature already works without one). */
+    private val authInterceptor: Interceptor by lazy {
+        Interceptor { chain ->
+            val token = runBlocking { secureTokenStore.tokenFlow().first() }
+            val request = if (token != null) {
+                chain.request().newBuilder().addHeader("Authorization", "Bearer $token").build()
+            } else {
+                chain.request()
+            }
+            chain.proceed(request)
+        }
+    }
+
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             // callTimeout alone doesn't override OkHttp's default 10s per-read/write timeouts —
@@ -35,6 +61,7 @@ object AppContainer {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(35, TimeUnit.SECONDS)
             .writeTimeout(35, TimeUnit.SECONDS)
+            .addInterceptor(authInterceptor)
             .addInterceptor(
                 HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC),
             )
@@ -53,6 +80,17 @@ object AppContainer {
 
     val questionRepository: QuestionRepository by lazy { QuestionRepository(apiService) }
 
+    val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
+
+    val authRepository: AuthRepository by lazy { AuthRepository(authApiService, secureTokenStore) }
+
+    // Notes generation is a single OpenAI call with no verification pass (cheaper/faster than
+    // question generation), and results are cached server-side after the first request — the
+    // fast client is a fine fit, same as questionApiService.
+    val notesApiService: NotesApiService by lazy { retrofit.create(NotesApiService::class.java) }
+
+    val notesRepository: NotesRepository by lazy { NotesRepository(notesApiService) }
+
     // Mock-test generation is a single long-running call (a few minutes for a full 200-question
     // test) — kept on a separate client/timeout so a genuinely-hung single-question call still
     // fails fast at 35s instead of regressing to a multi-minute hang.
@@ -62,6 +100,7 @@ object AppContainer {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(6, TimeUnit.MINUTES)
             .writeTimeout(1, TimeUnit.MINUTES)
+            .addInterceptor(authInterceptor)
             .addInterceptor(
                 HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC),
             )
@@ -78,6 +117,11 @@ object AppContainer {
 
     val mockTestApiService: MockTestApiService by lazy { mockTestRetrofit.create(MockTestApiService::class.java) }
 
+    // Sync payloads grow over time (every practice answer and mock test ever taken) and can
+    // exceed what fits comfortably in the fast client's 35s budget — reuses the same
+    // long-timeout client built for mock-test generation rather than a third OkHttp instance.
+    val syncApiService: SyncApiService by lazy { mockTestRetrofit.create(SyncApiService::class.java) }
+
     private val database: NeetDatabase by lazy {
         Room.databaseBuilder(appContext, NeetDatabase::class.java, "neet.db")
             .fallbackToDestructiveMigration(true)
@@ -91,4 +135,6 @@ object AppContainer {
     val mockTestRepository: MockTestRepository by lazy {
         MockTestRepository(mockTestApiService, database.mockTestDao(), historyRepository)
     }
+
+    val syncRepository: SyncRepository by lazy { SyncRepository(syncApiService, historyRepository) }
 }

@@ -1,7 +1,10 @@
 package com.neet.backend.plugins
 
+import com.neet.backend.auth.EmailAlreadyExistsException
+import com.neet.backend.auth.InvalidCredentialsException
 import com.neet.backend.model.ErrorResponse
 import com.neet.backend.openai.OpenAiException
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.JsonConvertException
@@ -19,7 +22,8 @@ fun Application.configureHttp() {
         anyMethod()
         allowMethod(HttpMethod.Options)
         anyHost()
-        allowHeader(io.ktor.http.HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.Authorization)
     }
 
     install(StatusPages) {
@@ -33,6 +37,18 @@ fun Application.configureHttp() {
             call.respond(
                 HttpStatusCode.BadGateway,
                 ErrorResponse("generation_failed", cause.message ?: "Question generation failed"),
+            )
+        }
+        exception<EmailAlreadyExistsException> { call, cause ->
+            call.respond(
+                HttpStatusCode.Conflict,
+                ErrorResponse("email_taken", cause.message ?: "An account with this email already exists"),
+            )
+        }
+        exception<InvalidCredentialsException> { call, cause ->
+            call.respond(
+                HttpStatusCode.Unauthorized,
+                ErrorResponse("invalid_credentials", cause.message ?: "Invalid email or password"),
             )
         }
         exception<IllegalArgumentException> { call, cause ->

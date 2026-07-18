@@ -7,6 +7,10 @@ data class AppConfig(
     val openAiModel: String,
     val port: Int,
     val mockTestBatchConcurrency: Int,
+    val databaseUrl: String,
+    val jwtSecret: String,
+    val jwtIssuer: String,
+    val jwtAudience: String,
 ) {
     companion object {
         fun load(): AppConfig {
@@ -24,11 +28,29 @@ data class AppConfig(
                         "and fill in your own OpenAI API key."
                 )
 
+            val databaseUrl = env("DATABASE_URL")
+                ?.takeIf { it.isNotBlank() }
+                ?: error(
+                    "DATABASE_URL is not set. Add your NeonDB connection string to backend/.env " +
+                        "(the postgresql://... string from the Neon dashboard works as-is)."
+                )
+
+            val jwtSecret = env("JWT_SECRET")
+                ?.takeIf { it.isNotBlank() }
+                ?: error(
+                    "JWT_SECRET is not set. Add a long random string to backend/.env — this " +
+                        "signs auth tokens, so treat it like a password."
+                )
+
             return AppConfig(
                 openAiApiKey = apiKey,
                 openAiModel = env("OPENAI_MODEL") ?: "gpt-4.1-mini",
                 port = env("PORT")?.toIntOrNull() ?: 8080,
                 mockTestBatchConcurrency = env("MOCK_TEST_BATCH_CONCURRENCY")?.toIntOrNull() ?: 4,
+                databaseUrl = databaseUrl,
+                jwtSecret = jwtSecret,
+                jwtIssuer = env("JWT_ISSUER") ?: "neet-backend",
+                jwtAudience = env("JWT_AUDIENCE") ?: "neet-app",
             )
         }
     }

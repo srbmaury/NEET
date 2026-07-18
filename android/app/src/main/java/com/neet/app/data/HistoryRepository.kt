@@ -89,27 +89,18 @@ class HistoryRepository(
 
     fun history(): Flow<List<AnsweredQuestionEntity>> = answerDao.history()
 
-    /** Serializes every answered question and mock test attempt to a JSON string suitable for
-     * writing to a file. */
-    suspend fun exportBackupJson(): String {
-        val payload = BackupPayload(
-            exportedAt = System.currentTimeMillis(),
-            answers = answerDao.getAllOnce(),
-            mockTestSessions = mockTestDao.getAllSessionsOnce(),
-            mockTestQuestions = mockTestDao.getAllQuestionsOnce(),
-        )
-        return json.encodeToString(payload)
-    }
+    /** Builds the full local snapshot as a typed payload for cross-device sync — the only
+     * consumer now that manual file backup/restore has been replaced by account sync. */
+    suspend fun buildBackupPayload(): BackupPayload = BackupPayload(
+        exportedAt = System.currentTimeMillis(),
+        answers = answerDao.getAllOnce(),
+        mockTestSessions = mockTestDao.getAllSessionsOnce(),
+        mockTestQuestions = mockTestDao.getAllQuestionsOnce(),
+    )
 
-    /**
-     * Restores answers and mock tests from a previously exported backup. Merges
-     * non-destructively: existing rows are kept, rows with an id also present in the backup are
-     * overwritten by it, and new rows are added.
-     *
-     * @throws kotlinx.serialization.SerializationException if [backupJson] isn't a valid backup.
-     */
-    suspend fun importBackupJson(backupJson: String): RestoreResult {
-        val payload = json.decodeFromString<BackupPayload>(backupJson)
+    /** Merges a pulled sync snapshot non-destructively: existing rows are kept, rows with an id
+     * also present in the payload are overwritten by it, and new rows are added. */
+    suspend fun applyBackupPayload(payload: BackupPayload): RestoreResult {
         answerDao.insertAll(payload.answers)
         if (payload.mockTestSessions.isNotEmpty()) mockTestDao.insertSessions(payload.mockTestSessions)
         if (payload.mockTestQuestions.isNotEmpty()) mockTestDao.insertQuestions(payload.mockTestQuestions)
