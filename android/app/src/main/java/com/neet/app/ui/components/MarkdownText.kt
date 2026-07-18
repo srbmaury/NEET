@@ -28,6 +28,13 @@ private val singleDollarLine = Regex("""(?m)^(\s*)\$(\s*)$""")
 private val parenDelimited = Regex("""\\\(([^)]*?)\\\)""")
 private val bracketDelimited = Regex("""\\\[([^]]*?)\\]""")
 
+// Catches a different drift: raw LaTeX commands (\frac, \times, \text, ...) sitting inside plain
+// "(...)" parentheses with no math delimiter at all — not even \( \). A backslash followed by
+// letters essentially never appears in ordinary parenthetical English text, so treating that as
+// the signal (rather than e.g. presence of digits or symbols alone) keeps this from misfiring on
+// normal asides like "(displacement in meters)".
+private val looseLatexInParens = Regex("""\(([^()\n]*\\[a-zA-Z]+[^()\n]*)\)""")
+
 private fun normalizeLatexDelimiters(markdown: String): String {
     var normalized = singleDollarLine.replace(markdown) { match ->
         "${match.groupValues[1]}$$${match.groupValues[2]}"
@@ -39,6 +46,9 @@ private fun normalizeLatexDelimiters(markdown: String): String {
         "$$" + match.groupValues[1] + "$$"
     }
     normalized = bracketDelimited.replace(normalized) { match ->
+        "$$" + match.groupValues[1] + "$$"
+    }
+    normalized = looseLatexInParens.replace(normalized) { match ->
         "$$" + match.groupValues[1] + "$$"
     }
     return normalized
