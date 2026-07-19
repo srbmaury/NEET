@@ -42,6 +42,7 @@ import com.neet.app.ui.mocktest.MockTestResultScreen
 import com.neet.app.ui.mocktest.MockTestScreen
 import com.neet.app.ui.notes.NoteScreen
 import com.neet.app.ui.notes.NotesTopicPickerScreen
+import com.neet.app.ui.reference.QuickReferenceScreen
 import com.neet.app.ui.picker.TopicPickerScreen
 import com.neet.app.ui.practicemodes.PracticeModesScreen
 import com.neet.app.ui.question.QuestionReviewScreen
@@ -66,6 +67,7 @@ private const val ROUTE_MOCK_TEST_RESULT = "mock_test_result/{testId}"
 private const val ROUTE_LOGIN = "login"
 private const val ROUTE_SIGNUP = "signup"
 private const val ROUTE_NOTES_PICKER = "notes_picker"
+private const val ROUTE_QUICK_REFERENCE = "quick_reference"
 private const val ROUTE_NOTES = "notes/{subject}/{topic}"
 private const val ROUTE_REVIEW_MISTAKES = "review_mistakes/{subject}/{topic}"
 private const val ROUTE_SYLLABUS_HUB = "syllabus_hub"
@@ -286,6 +288,12 @@ fun NeetNavHost(
             composable(ROUTE_NOTES_PICKER) {
                 NotesTopicPickerScreen(
                     onOpenNotes = { subject, topic -> navController.navigateToNotes(subject, topic) },
+                    onOpenQuickReference = { navController.navigate(ROUTE_QUICK_REFERENCE) },
+                )
+            }
+            composable(ROUTE_QUICK_REFERENCE) {
+                QuickReferenceScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(
