@@ -62,8 +62,20 @@ class SprintViewModel(
         viewModelScope.launch {
             val stats = historyRepository.topicStats().first()
             topicStat = stats.firstOrNull { it.subject == subject.name && it.topic == topic }
-            _uiState.value = enterIndex(index = 0, correctSoFar = 0, secondsRemaining = SPRINT_DURATION_SECONDS)
+            // The 10-minute clock is meant to time answering, not the first question's generation
+            // call — so unlike every later index (which can fall back to an on-demand fetch inside
+            // QuestionScreen if its prefetch hasn't landed yet), index 0 is awaited here before the
+            // timer starts at all.
+            val first = fetchQuestion()
+            _uiState.value = SprintUiState.InProgress(
+                questionIndex = 0,
+                correctSoFar = 0,
+                secondsRemaining = SPRINT_DURATION_SECONDS,
+                difficulty = first?.first ?: suggestedDifficulty(topicStat),
+                preloadedQuestion = first?.second,
+            )
             startTimer()
+            prefetchNext(1)
         }
     }
 
@@ -75,16 +87,20 @@ class SprintViewModel(
         return state
     }
 
+    private suspend fun fetchQuestion(): Pair<Difficulty, Question>? {
+        val difficulty = suggestedDifficulty(topicStat)
+        val excludeStems = historyRepository.recentStems(subject.name, topic)
+        val request = GenerateQuestionRequest(subject, topic, difficulty, excludeStems)
+        return when (val result = repository.generateQuestion(request)) {
+            is QuestionResult.Success -> difficulty to result.question
+            is QuestionResult.Failure -> null // that question falls back to an on-demand fetch instead
+        }
+    }
+
     private fun prefetchNext(index: Int) {
         if (index >= SPRINT_QUESTION_COUNT || prefetchBuffer.containsKey(index)) return
         viewModelScope.launch {
-            val difficulty = suggestedDifficulty(topicStat)
-            val excludeStems = historyRepository.recentStems(subject.name, topic)
-            val request = GenerateQuestionRequest(subject, topic, difficulty, excludeStems)
-            when (val result = repository.generateQuestion(request)) {
-                is QuestionResult.Success -> prefetchBuffer[index] = difficulty to result.question
-                is QuestionResult.Failure -> Unit // silently drop; that question loads on-demand instead
-            }
+            fetchQuestion()?.let { prefetchBuffer[index] = it }
         }
     }
 

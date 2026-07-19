@@ -1,6 +1,5 @@
 package com.neet.app.ui.notes
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,7 +27,6 @@ import com.neet.app.ui.components.TopicRow
 @Composable
 fun NotesTopicPickerScreen(
     onOpenNotes: (Subject, String) -> Unit,
-    onOpenQuickReference: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedSubject by remember { mutableStateOf(Subject.PHYSICS) }
@@ -39,15 +37,6 @@ fun NotesTopicPickerScreen(
             "Pick a topic for a quick reference sheet",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
-        )
-
-        Text(
-            "Quick Reference: constants, trig, vectors →",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .clickable(onClick = onOpenQuickReference)
-                .padding(top = 12.dp, bottom = 4.dp),
         )
 
         Text(

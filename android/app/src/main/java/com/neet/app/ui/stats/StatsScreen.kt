@@ -73,7 +73,6 @@ fun StatsScreen(
     onReviewMistakes: (Subject, String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSignup: () -> Unit,
-    onOpenSyllabusHub: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: StatsViewModel = viewModel(factory = StatsViewModelFactory(historyRepository))
@@ -107,17 +106,6 @@ fun StatsScreen(
     ) {
         item {
             Text("Your progress", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        item {
-            Text(
-                "Syllabus →",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clickable(onClick = onOpenSyllabusHub)
-                    .padding(top = 12.dp, bottom = 4.dp),
-            )
         }
 
         item {
@@ -286,7 +274,9 @@ private fun AccountSection(
 @Composable
 private fun MistakeTopicCard(mistake: MistakeTopicStat, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.width(200.dp).clickable(onClick = onClick),
+        // Fixed height (rather than wrap-content) so cards line up evenly regardless of whether
+        // a given topic name wraps to one line or two.
+        modifier = Modifier.width(200.dp).height(120.dp).clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(8.dp),
     ) {
