@@ -22,6 +22,12 @@ object PromptBuilder {
           line.
         - Do NOT use a single dollar sign for math — it will not render and will show up
           as a literal character to the student.
+        - A ${'$'}${'$'}...${'$'}${'$'} block must contain ONLY the mathematical expression itself —
+          never symbol meanings, units, or a "where X is..." explanation inside it (not even
+          wrapped in \text{}). LaTeX math mode ignores spaces between bare words, so any English
+          explanation placed inside the block renders as an unreadable, unbroken run of letters
+          the student cannot read. Always write that explanation as plain Markdown immediately
+          after the closing ${'$'}${'$'}, in a normal sentence with spaces between words.
     """.trimIndent()
 
     val systemPrompt = """

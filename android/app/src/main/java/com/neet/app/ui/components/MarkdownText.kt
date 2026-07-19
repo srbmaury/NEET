@@ -2,6 +2,7 @@ package com.neet.app.ui.components
 
 import android.text.TextUtils
 import android.widget.TextView
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -106,6 +107,12 @@ fun MarkdownText(
             .usePlugin(
                 JLatexMathPlugin.create(latexTextSizePx) { builder ->
                     builder.inlinesEnabled(true)
+                    // Without this, a long formula (e.g. a chained equality like
+                    // "cos 2θ = cos²θ − sin²θ = 2cos²θ − 1 = 1 − 2sin²θ") renders as one
+                    // unbreakable image wider than the screen and overflows horizontally instead
+                    // of wrapping — block math has no line-wrap concept, so shrink it to fit
+                    // instead.
+                    builder.theme().blockFitCanvas(true)
                 },
             )
             .build()
@@ -115,7 +122,10 @@ fun MarkdownText(
     val textSizeSp = if (style.fontSize.type == TextUnitType.Sp) style.fontSize.value else 16f
 
     AndroidView(
-        modifier = modifier,
+        // blockFitCanvas (above) can only shrink a wide formula to fit an already-bounded width —
+        // most callers don't pass their own width modifier, so without this the TextView measures
+        // wrap-content and there's no bound to fit into, and the formula overflows regardless.
+        modifier = modifier.fillMaxWidth(),
         factory = { TextView(it) },
         update = { textView ->
             textView.setTextColor(textColorArgb)
