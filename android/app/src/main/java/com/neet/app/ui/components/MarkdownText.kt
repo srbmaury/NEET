@@ -25,20 +25,54 @@ import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 // than relying solely on prompt compliance.
 private val singleDollarInline = Regex("""(?<!\$)\$(?!\$)([^$\n]+?)(?<!\$)\$(?!\$)""")
 private val singleDollarLine = Regex("""(?m)^(\s*)\$(\s*)$""")
-// Content tolerates one level of nested plain "(...)"/"[...]" — a naive [^)]*? content group
-// breaks the moment the LaTeX itself contains a parenthesized sub-expression like "(2t_f)",
-// leaving the whole \( \) pair unmatched and rendered as literal source text.
-private val parenDelimited = Regex("""\\\(((?:[^()\n]|\([^()\n]*\))*)\\\)""")
-private val bracketDelimited = Regex("""\\\[((?:[^\[\]\n]|\[[^\[\]\n]*\])*)\\]""")
 
-// Catches a different drift: raw LaTeX commands (\frac, \times, \text, ...) sitting inside plain
-// "(...)" parentheses with no math delimiter at all — not even \( \). A backslash followed by
-// letters essentially never appears in ordinary parenthetical English text, so treating that as
-// the signal (rather than e.g. presence of digits or symbols alone) keeps this from misfiring on
-// normal asides like "(displacement in meters)". The content allows one level of nested "(...)"
-// (e.g. "(h = ... (2t_f)^2)") since LaTeX expressions legitimately contain their own parens.
-private val looseLatexInParens =
-    Regex("""\(((?:[^()\n]|\([^()\n]*\))*\\[a-zA-Z]+(?:[^()\n]|\([^()\n]*\))*)\)""")
+// Everything below here runs only on text OUTSIDE already-valid $$...$$ blocks (see
+// mathBlock/replaceOutsideMathBlocks) — these patterns match on a bare literal "(" or "\", with
+// no awareness of surrounding context, so run unguarded they'll happily re-match content a
+// well-formed $$ block already contains (e.g. the "(\rho)" annotation inside
+// "$$\text{Density } (\rho) = ...$$") and shatter it into broken fragments.
+//
+// The four alternatives below are combined into one pattern and applied in a single pass — critical
+// so an earlier alternative's replacement text (freshly inserted $$) is never re-scanned and
+// double-wrapped by a later alternative.
+private val latexOutsideMathBlocks = Regex(
+    // 1: \( ... \) — content tolerates one level of nested plain parens, since a naive [^)]*?
+    // content group breaks the moment the LaTeX itself contains a parenthesized sub-expression
+    // like "(2t_f)", leaving the whole \( \) pair unmatched and rendered as literal source text.
+    """\\\(((?:[^()\n]|\([^()\n]*\))*)\\\)""" +
+        "|" +
+        // 2: \[ ... \], same nested-bracket tolerance.
+        """\\\[((?:[^\[\]\n]|\[[^\[\]\n]*\])*)\\]""" +
+        "|" +
+        // 3: raw LaTeX commands (\frac, \times, \text, ...) sitting inside plain "(...)" with no
+        // math delimiter at all — not even \( \). A backslash followed by letters essentially
+        // never appears in ordinary parenthetical English text, so treating that as the signal
+        // keeps this from misfiring on normal asides like "(displacement in meters)". One level
+        // of nested "(...)" tolerated, same as alternative 1.
+        """\(((?:[^()\n]|\([^()\n]*\))*\\[a-zA-Z]+(?:[^()\n]|\([^()\n]*\))*)\)""" +
+        "|" +
+        // 4: a bare LaTeX command with NO delimiter at all, not even parens — e.g. an answer
+        // option that's just "\frac{1}{2}Mv^2". Anchored to start at a backslash-command (the
+        // same never-appears-in-prose signal as alternative 3), then greedily extends through
+        // adjacent tight math tokens (letters/digits/operators/braces/more commands) with no
+        // spaces, stopping at the first character that isn't plausibly still part of the
+        // expression — deliberately conservative so it can't run on into surrounding prose.
+        """(\\[a-zA-Z]+(?:\{[^{}\n]*\})*(?:\\[a-zA-Z]+(?:\{[^{}\n]*\})*|[A-Za-z0-9^_+\-*/=.])*)""",
+)
+
+private val mathBlock = Regex("""\$\$.*?\$\$""", RegexOption.DOT_MATCHES_ALL)
+
+private fun replaceOutsideMathBlocks(text: String, transform: (String) -> String): String {
+    val result = StringBuilder()
+    var lastEnd = 0
+    for (match in mathBlock.findAll(text)) {
+        result.append(transform(text.substring(lastEnd, match.range.first)))
+        result.append(match.value)
+        lastEnd = match.range.last + 1
+    }
+    result.append(transform(text.substring(lastEnd)))
+    return result.toString()
+}
 
 private fun normalizeLatexDelimiters(markdown: String): String {
     var normalized = singleDollarLine.replace(markdown) { match ->
@@ -47,14 +81,11 @@ private fun normalizeLatexDelimiters(markdown: String): String {
     normalized = singleDollarInline.replace(normalized) { match ->
         "$$" + match.groupValues[1] + "$$"
     }
-    normalized = parenDelimited.replace(normalized) { match ->
-        "$$" + match.groupValues[1] + "$$"
-    }
-    normalized = bracketDelimited.replace(normalized) { match ->
-        "$$" + match.groupValues[1] + "$$"
-    }
-    normalized = looseLatexInParens.replace(normalized) { match ->
-        "$$" + match.groupValues[1] + "$$"
+    normalized = replaceOutsideMathBlocks(normalized) { segment ->
+        latexOutsideMathBlocks.replace(segment) { match ->
+            val inner = match.groupValues.drop(1).firstOrNull { it.isNotEmpty() } ?: match.value
+            "$$" + inner + "$$"
+        }
     }
     return normalized
 }
