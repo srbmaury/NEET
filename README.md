@@ -51,9 +51,18 @@ holds the key server-side and the app only ever talks to your own backend.
 ## Running the Android app (no backend setup needed)
 
 The debug build points at a deployed Render backend by default
-(`android/app/build.gradle.kts` → `BASE_URL`), so you can open `android/` in Android Studio and
-run the app immediately — no backend, no API key, no database. This is the fastest way to just try
-the app.
+(`android/app/build.gradle.kts` → `BASE_URL`), so you can build and run the app immediately — no
+backend, no API key, no database. This is the fastest way to just try the app.
+
+Either open `android/` in Android Studio and hit Run, or from the command line (with an emulator
+already running, or a device connected):
+
+```
+cd android
+export JAVA_HOME=$(/usr/libexec/java_home)   # if gradlew can't find a JDK
+./gradlew assembleDebug
+./gradlew installDebug
+```
 
 Run your own backend instead if you want to develop against backend changes, tune the prompts, or
 avoid depending on the shared deployed instance.
