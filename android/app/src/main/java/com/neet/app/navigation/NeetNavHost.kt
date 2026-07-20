@@ -130,6 +130,7 @@ fun NeetNavHost(
                     onOpenQuickReference = { navController.navigate(ROUTE_QUICK_REFERENCE) },
                     onOpenSyllabusHeatmap = { navController.navigate(ROUTE_SYLLABUS_HEATMAP) },
                     onOpenRevisionTracker = { navController.navigate(ROUTE_REVISION_TRACKER) },
+                    notesRepository = notesRepository,
                 )
             }
             composable(ROUTE_SMART_PRACTICE) {

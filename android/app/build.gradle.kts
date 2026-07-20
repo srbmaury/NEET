@@ -19,7 +19,9 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"https://neet-wxmh.onrender.com/\"")
+            // TEMPORARY: local backend for fast iteration while building the PDF export feature.
+            // Revert to the deployed URL before real use.
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8877/\"")
         }
         release {
             isMinifyEnabled = false

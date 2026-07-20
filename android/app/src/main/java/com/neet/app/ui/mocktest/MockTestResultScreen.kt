@@ -1,5 +1,8 @@
 package com.neet.app.ui.mocktest
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,15 +23,18 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -53,6 +59,32 @@ fun MockTestResultScreen(
         factory = MockTestResultViewModelFactory(repository, testId),
     )
     val uiState by viewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+    val exportViewModel: MockTestExportViewModel = viewModel(
+        factory = MockTestExportViewModelFactory(repository, testId),
+    )
+    val exportState by exportViewModel.state.collectAsState()
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf"),
+    ) { uri ->
+        if (uri != null) {
+            exportViewModel.export(context, uri)
+        }
+    }
+    LaunchedEffect(exportState) {
+        when (val state = exportState) {
+            is MockTestExportState.Success -> {
+                Toast.makeText(context, "Saved test review PDF", Toast.LENGTH_SHORT).show()
+                exportViewModel.dismiss()
+            }
+            is MockTestExportState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                exportViewModel.dismiss()
+            }
+            else -> Unit
+        }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -113,6 +145,22 @@ fun MockTestResultScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Review Answers")
+            }
+            Spacer(Modifier.padding(top = 8.dp))
+            OutlinedButton(
+                onClick = {
+                    createDocumentLauncher.launch("NEET_MockTest_${testId.take(8)}.pdf")
+                },
+                enabled = exportState !is MockTestExportState.Generating,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    if (exportState is MockTestExportState.Generating) {
+                        "Generating PDF…"
+                    } else {
+                        "Download PDF (questions + answers)"
+                    },
+                )
             }
             Spacer(Modifier.padding(bottom = 16.dp))
         }

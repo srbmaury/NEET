@@ -1,5 +1,6 @@
 package com.neet.app.ui.components
 
+import android.content.Context
 import android.text.TextUtils
 import android.widget.TextView
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
+import java.util.concurrent.ExecutorService
 
 // The model is trained overwhelmingly on standard LaTeX delimiter conventions ($...$,
 // \(...\), \[...\]) and drifts back to them despite explicit prompt instructions.
@@ -75,7 +77,31 @@ private fun replaceOutsideMathBlocks(text: String, transform: (String) -> String
     return result.toString()
 }
 
-private fun normalizeLatexDelimiters(markdown: String): String {
+// The model occasionally under-escapes a backslash in the raw JSON it returns when the LaTeX
+// command right after it starts with a JSON control-escape letter (b, f, n, r, t) — e.g. it emits
+// `\frac` where valid JSON would need `\\frac`. A spec-compliant JSON parser then decodes that as
+// the literal control character the escape names (backspace/form-feed/tab), silently swallowing
+// the letter and corrupting the formula (`\frac{nRT}{P}` becomes `<0x0C>rac{nRT}{P}`) — this has
+// already happened to some already-cached notes. A raw control character is never intentional
+// inside a math block, so undo the corruption there: map it back to the backslash-escape it
+// almost certainly came from. \n and \r are deliberately left alone — multi-line block LaTeX is a
+// real, intentional use of newlines, unlike the other three.
+private val mathControlCharRepairs = mapOf(
+    '\u0008' to "\\b",
+    '\u000C' to "\\f",
+    '\u0009' to "\\t",
+)
+
+private fun repairMathControlChars(text: String): String =
+    mathBlock.replace(text) { match ->
+        val sb = StringBuilder(match.value.length)
+        for (ch in match.value) sb.append(mathControlCharRepairs[ch] ?: ch)
+        sb.toString()
+    }
+
+// `internal` (not `private`) — the PDF export feature needs the exact same normalization off
+// the Compose rendering path, to keep on-screen and exported-PDF math rendering consistent.
+internal fun normalizeLatexDelimiters(markdown: String): String {
     var normalized = singleDollarLine.replace(markdown) { match ->
         "${match.groupValues[1]}$$${match.groupValues[2]}"
     }
@@ -88,8 +114,37 @@ private fun normalizeLatexDelimiters(markdown: String): String {
             "$$" + inner + "$$"
         }
     }
+    normalized = repairMathControlChars(normalized)
     return normalized
 }
+
+// `internal` for the same reason as normalizeLatexDelimiters above — the PDF renderer builds its
+// own TextView outside of Compose (so it can call measure/layout/draw directly for pagination),
+// but needs identical Markwon configuration. [executorService] defaults to Markwon's own
+// background pool (right for live UI); the PDF path overrides it with a same-thread executor so
+// LaTeX bitmaps are ready synchronously before the one-shot measure/layout/draw pass runs.
+internal fun buildMarkwon(
+    context: Context,
+    latexTextSizePx: Float,
+    executorService: ExecutorService? = null,
+): Markwon =
+    Markwon.builder(context)
+        .usePlugin(MarkwonInlineParserPlugin.create())
+        .usePlugin(
+            JLatexMathPlugin.create(latexTextSizePx) { builder ->
+                builder.inlinesEnabled(true)
+                // Without this, a long formula (e.g. a chained equality like
+                // "cos 2θ = cos²θ − sin²θ = 2cos²θ − 1 = 1 − 2sin²θ") renders as one
+                // unbreakable image wider than the screen and overflows horizontally instead
+                // of wrapping — block math has no line-wrap concept, so shrink it to fit
+                // instead.
+                builder.theme().blockFitCanvas(true)
+                if (executorService != null) {
+                    builder.executorService(executorService)
+                }
+            },
+        )
+        .build()
 
 @Composable
 fun MarkdownText(
@@ -102,20 +157,7 @@ fun MarkdownText(
     val density = LocalDensity.current
     val latexTextSizePx = remember(density) { with(density) { 16.sp.toPx() } }
     val markwon = remember(context, latexTextSizePx) {
-        Markwon.builder(context)
-            .usePlugin(MarkwonInlineParserPlugin.create())
-            .usePlugin(
-                JLatexMathPlugin.create(latexTextSizePx) { builder ->
-                    builder.inlinesEnabled(true)
-                    // Without this, a long formula (e.g. a chained equality like
-                    // "cos 2θ = cos²θ − sin²θ = 2cos²θ − 1 = 1 − 2sin²θ") renders as one
-                    // unbreakable image wider than the screen and overflows horizontally instead
-                    // of wrapping — block math has no line-wrap concept, so shrink it to fit
-                    // instead.
-                    builder.theme().blockFitCanvas(true)
-                },
-            )
-            .build()
+        buildMarkwon(context, latexTextSizePx)
     }
     val resolvedColor = if (style.color.isUnspecified) LocalContentColor.current else style.color
     val textColorArgb = resolvedColor.toArgb()

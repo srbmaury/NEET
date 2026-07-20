@@ -72,6 +72,9 @@ class MockTestRepository(
 
     suspend fun getSession(testId: String): MockTestSessionEntity? = mockTestDao.getSession(testId)
 
+    /** One-shot (not a Flow) — for a completed test that's no longer changing, e.g. PDF export. */
+    suspend fun getQuestions(testId: String): List<MockTestQuestionEntity> = mockTestDao.getQuestionsOnce(testId)
+
     suspend fun getActiveSession(): MockTestSessionEntity? = mockTestDao.getActiveSession()
 
     fun activeSessionFlow(): Flow<MockTestSessionEntity?> = mockTestDao.activeSessionFlow()
