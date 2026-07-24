@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 sealed interface MockTestExportState {
     data object Idle : MockTestExportState
     data object Generating : MockTestExportState
-    data object Success : MockTestExportState
+    data class Success(val uri: Uri) : MockTestExportState
     data class Error(val message: String) : MockTestExportState
 }
 
@@ -48,7 +48,7 @@ class MockTestExportViewModel(
                 withContext(Dispatchers.IO) {
                     writePdfToUri(context, document, uri)
                 }
-                _state.value = MockTestExportState.Success
+                _state.value = MockTestExportState.Success(uri)
             } catch (e: Exception) {
                 _state.value = MockTestExportState.Error(e.message ?: "Something went wrong while generating the PDF")
             }

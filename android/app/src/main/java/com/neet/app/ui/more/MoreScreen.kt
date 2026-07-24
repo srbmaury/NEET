@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neet.app.data.NotesRepository
+import com.neet.app.pdf.openPdf
 
 private data class MoreFeature(val title: String, val description: String, val onClick: () -> Unit)
 
@@ -61,7 +62,7 @@ fun MoreScreen(
     LaunchedEffect(exportState) {
         when (val state = exportState) {
             is NotesExportState.Success -> {
-                Toast.makeText(context, "Saved NEET_Notes.pdf", Toast.LENGTH_SHORT).show()
+                openPdf(context, state.uri)
                 exportViewModel.dismiss()
             }
             is NotesExportState.Error -> {

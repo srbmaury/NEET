@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 sealed interface NotesExportState {
     data object Idle : NotesExportState
     data class Loading(val completed: Int, val total: Int) : NotesExportState
-    data object Success : NotesExportState
+    data class Success(val uri: Uri) : NotesExportState
     data class Error(val message: String) : NotesExportState
 }
 
@@ -47,7 +47,7 @@ class NotesExportViewModel(private val notesRepository: NotesRepository) : ViewM
                 withContext(Dispatchers.IO) {
                     writePdfToUri(context, document, uri)
                 }
-                _state.value = NotesExportState.Success
+                _state.value = NotesExportState.Success(uri)
             } catch (e: Exception) {
                 _state.value = NotesExportState.Error(e.message ?: "Something went wrong while generating the PDF")
             }

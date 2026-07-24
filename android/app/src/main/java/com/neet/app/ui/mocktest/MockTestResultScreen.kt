@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neet.app.data.MockTestRepository
 import com.neet.app.domain.SubjectScore
+import com.neet.app.pdf.openPdf
 
 private val correctColor = Color(0xFF2E7D32)
 private val wrongColor = Color(0xFFC62828)
@@ -75,7 +76,7 @@ fun MockTestResultScreen(
     LaunchedEffect(exportState) {
         when (val state = exportState) {
             is MockTestExportState.Success -> {
-                Toast.makeText(context, "Saved test review PDF", Toast.LENGTH_SHORT).show()
+                openPdf(context, state.uri)
                 exportViewModel.dismiss()
             }
             is MockTestExportState.Error -> {
