@@ -29,6 +29,30 @@ import java.util.concurrent.ExecutorService
 private val singleDollarInline = Regex("""(?<!\$)\$(?!\$)([^$\n]+?)(?<!\$)\$(?!\$)""")
 private val singleDollarLine = Regex("""(?m)^(\s*)\$(\s*)$""")
 
+// The same under-escaping bug documented below on mathControlCharRepairs also happens for \n and
+// \r specifically — but unlike \b/\f/\t, a raw newline is *sometimes* legitimate inside a $$ block
+// (this app's own multi-line block-formula convention puts one right after the opening $$ and
+// right before the closing $$), so that fix deliberately doesn't touch \n/\r. A single-$ inline
+// span is different: it's meant to be short and inline, so it should never legitimately contain a
+// raw newline at all — one appearing there is unambiguously this corruption (`$\neq$` becomes
+// `$<raw newline>eq$`), caught here before singleDollarInline's own regex (which already excludes
+// literal newlines from its content class, so it can't see this pattern to begin with).
+private val corruptedSingleDollarEscape = Regex("""\$([\r\n]+)([a-z]{1,10})\$""")
+
+private fun repairSingleDollarEscapes(text: String): String =
+    corruptedSingleDollarEscape.replace(text) { match ->
+        val letter = if ('\r' in match.groupValues[1]) "r" else "n"
+        "$\\$letter${match.groupValues[2]}$"
+    }
+
+// A stray control character outside any math delimiter isn't explained by the escape-letter bug
+// above (that's scoped to LaTeX commands) — likely a different, rarer model glitch — but it's
+// never legitimate in ordinary prose either way. Drop it rather than guess what it should have
+// been; leaving it in would otherwise show as a broken tofu glyph. \t/\n/\r are real whitespace
+// and excluded.
+private fun stripStrayControlChars(text: String): String =
+    text.filter { ch -> ch == '\t' || ch == '\n' || ch == '\r' || ch.code !in 0x00..0x1F }
+
 // Everything below here runs only on text OUTSIDE already-valid $$...$$ blocks (see
 // mathBlock/replaceOutsideMathBlocks) — these patterns match on a bare literal "(" or "\", with
 // no awareness of surrounding context, so run unguarded they'll happily re-match content a
@@ -102,7 +126,8 @@ private fun repairMathControlChars(text: String): String =
 // `internal` (not `private`) — the PDF export feature needs the exact same normalization off
 // the Compose rendering path, to keep on-screen and exported-PDF math rendering consistent.
 internal fun normalizeLatexDelimiters(markdown: String): String {
-    var normalized = singleDollarLine.replace(markdown) { match ->
+    var normalized = repairSingleDollarEscapes(markdown)
+    normalized = singleDollarLine.replace(normalized) { match ->
         "${match.groupValues[1]}$$${match.groupValues[2]}"
     }
     normalized = singleDollarInline.replace(normalized) { match ->
@@ -115,6 +140,7 @@ internal fun normalizeLatexDelimiters(markdown: String): String {
         }
     }
     normalized = repairMathControlChars(normalized)
+    normalized = stripStrayControlChars(normalized)
     return normalized
 }
 

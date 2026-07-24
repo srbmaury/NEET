@@ -85,7 +85,12 @@ fun renderMarkdownToPdf(context: Context, markdown: String): PdfDocument {
         val page = document.startPage(pageInfo)
         val canvas = page.canvas
         canvas.save()
-        canvas.clipRect(MARGIN_PX, MARGIN_PX, PAGE_WIDTH_PX - MARGIN_PX, PAGE_HEIGHT_PX - MARGIN_PX)
+        // Clip to how much content this page actually holds (effectiveEndY - currentY), not the
+        // full page height — when the cut backs off to the previous line boundary (the common
+        // case), the untouched gap below that in a fixed-height clip would otherwise still fall
+        // within the clip rect and let the next line's top edge bleed through, which then gets
+        // drawn again in full at the top of the next page.
+        canvas.clipRect(MARGIN_PX, MARGIN_PX, PAGE_WIDTH_PX - MARGIN_PX, MARGIN_PX + (effectiveEndY - currentY))
         canvas.translate(MARGIN_PX.toFloat(), MARGIN_PX.toFloat() - currentY)
         textView.draw(canvas)
         canvas.restore()

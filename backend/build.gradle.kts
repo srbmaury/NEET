@@ -50,6 +50,11 @@ dependencies {
 
 application {
     mainClass.set("com.neet.backend.ApplicationKt")
+    // TEMPORARY local-dev workaround: this machine's JVM has started binding the Ktor server
+    // socket IPv6-only after some host sleep/wake cycle, which breaks the Android emulator's
+    // IPv4-based 10.0.2.2 host alias even though `curl localhost` still works (macOS resolves
+    // localhost to ::1 first, masking it). Revert before committing.
+    applicationDefaultJvmArgs = listOf("-Djava.net.preferIPv4Stack=true")
 }
 
 tasks.test {

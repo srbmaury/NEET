@@ -32,6 +32,12 @@ private fun toJdbcDataSource(databaseUrl: String): HikariDataSource {
         // Solo-scale app on serverless Postgres — keep the pool small regardless of what the
         // provider's own pooler allows, to stay well under any concurrent-connection limit.
         maximumPoolSize = 5
+        // Neon (like most serverless Postgres) closes connections that sit idle for a while
+        // server-side. HikariCP's 30-minute default maxLifetime is way past that, so a pooled
+        // connection can go stale — the next request to reuse it then fails with "connection has
+        // been closed" instead of transparently reconnecting. Recycle proactively, well under
+        // whatever Neon's own idle threshold is, so requests never hit a dead connection.
+        maxLifetime = 3 * 60 * 1000L
     }
     return HikariDataSource(hikariConfig)
 }
