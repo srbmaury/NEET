@@ -4,6 +4,7 @@ import com.neet.app.data.local.MockTestQuestionEntity
 import com.neet.app.data.local.MockTestSessionEntity
 import com.neet.app.data.model.Question
 import com.neet.app.data.model.Subject
+import com.neet.app.data.model.TestSection
 import java.text.DateFormat
 import java.util.Date
 
@@ -33,38 +34,43 @@ fun buildMockTestMarkdown(
         appendLine()
     }
 
-    val bySubject = questions
-        .sortedBy { it.sectionIndex }
-        .groupBy { Subject.valueOf(it.subject) }
+    val bySubject = questions.groupBy { Subject.valueOf(it.subject) }
 
-    var questionNumber = 0
     for (subject in Subject.entries) {
         val subjectQuestions = bySubject[subject] ?: continue
         appendLine("## ${subject.name.lowercase().replaceFirstChar { it.uppercase() }}")
         appendLine()
-        for (entity in subjectQuestions) {
-            questionNumber += 1
-            val question = decodeQuestion(entity)
-            appendLine("### Q$questionNumber (${entity.section})")
+        for (section in TestSection.entries) {
+            val sectionQuestions = subjectQuestions
+                .filter { it.section == section.name }
+                .sortedBy { it.sectionIndex }
+            if (sectionQuestions.isEmpty()) continue
+
+            appendLine("### Section ${section.name}")
             appendLine()
-            appendLine(question.stem)
-            appendLine()
-            question.options.forEach { option ->
-                appendLine("- ${option.key}. ${option.text}")
+            sectionQuestions.forEachIndexed { index, entity ->
+                val question = decodeQuestion(entity)
+                appendLine("#### Q${index + 1}")
+                appendLine()
+                appendLine(question.stem)
+                appendLine()
+                question.options.forEach { option ->
+                    appendLine("- ${option.key}. ${option.text}")
+                }
+                appendLine()
+                val selectedKey = entity.selectedOptionKey
+                val selectedText = question.options.firstOrNull { it.key == selectedKey }?.text
+                if (selectedKey != null && selectedText != null) {
+                    appendLine("**Your answer:** $selectedKey. $selectedText")
+                } else {
+                    appendLine("**Your answer:** Not answered")
+                }
+                val correctText = question.options.firstOrNull { it.key == entity.correctOptionKey }?.text
+                appendLine("**Correct answer:** ${entity.correctOptionKey}. $correctText")
+                appendLine()
+                appendLine(question.explanation.whyCorrect)
+                appendLine()
             }
-            appendLine()
-            val selectedKey = entity.selectedOptionKey
-            val selectedText = question.options.firstOrNull { it.key == selectedKey }?.text
-            if (selectedKey != null && selectedText != null) {
-                appendLine("**Your answer:** $selectedKey. $selectedText")
-            } else {
-                appendLine("**Your answer:** Not answered")
-            }
-            val correctText = question.options.firstOrNull { it.key == entity.correctOptionKey }?.text
-            appendLine("**Correct answer:** ${entity.correctOptionKey}. $correctText")
-            appendLine()
-            appendLine(question.explanation.whyCorrect)
-            appendLine()
         }
     }
 }
