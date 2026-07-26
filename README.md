@@ -124,6 +124,17 @@ export JAVA_HOME=$(/usr/libexec/java_home)
 
 > `installDebug` requires an Android emulator or a physical Android device connected through ADB.
 
+To start the existing emulator manually and launch the app:
+
+```bash
+cd android
+
+/Users/saurabhmaurya/Library/Android/sdk/emulator/emulator -avd neet_test
+
+JAVA_HOME=$(/usr/libexec/java_home) ./gradlew installDebug
+/Users/saurabhmaurya/Library/Android/sdk/platform-tools/adb shell am start -n com.neet.app/.MainActivity
+```
+
 ---
 
 ### Run Your Own Backend

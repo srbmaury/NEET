@@ -3,6 +3,7 @@ package com.neet.app.ui.mocktest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -184,16 +185,28 @@ fun MockTestScreen(
                         Spacer(Modifier.padding(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            OutlinedButton(onClick = { viewModel.clearAnswer() }) {
-                                Text("Clear")
+                            OutlinedButton(
+                                onClick = { viewModel.clearAnswer() },
+                                modifier = Modifier.weight(0.8f),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                            ) {
+                                Text("Clear", maxLines = 1)
                             }
-                            OutlinedButton(onClick = { viewModel.toggleMarkedForReview() }) {
-                                Text(if (currentEntity.markedForReview) "Unmark" else "Mark for Review")
+                            OutlinedButton(
+                                onClick = { viewModel.toggleMarkedForReview() },
+                                modifier = Modifier.weight(0.95f),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                            ) {
+                                Text(if (currentEntity.markedForReview) "Unmark" else "Mark", maxLines = 1)
                             }
-                            Button(onClick = { viewModel.nextQuestion() }, modifier = Modifier.weight(1f)) {
-                                Text("Save & Next")
+                            Button(
+                                onClick = { viewModel.nextQuestion() },
+                                modifier = Modifier.weight(1.35f),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                            ) {
+                                Text("Save & Next", maxLines = 1)
                             }
                         }
                     }
