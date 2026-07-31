@@ -3,11 +3,11 @@
 > An AI-powered Android application for **NEET (India's medical entrance exam)** that generates unlimited syllabus-aligned practice questions, mock tests, notes, and flashcards using OpenAI.
 
 <p align="center">
-  <!-- Add screenshots here -->
-  <img src="docs/images/practice.png" width="22%">
-  <img src="docs/images/mock-test.png" width="22%">
-  <img src="docs/images/notes.png" width="22%">
-  <img src="docs/images/progress.png" width="22%">
+  <img src="docs/images/practice.png" width="18%">
+  <img src="docs/images/mock-test.png" width="18%">
+  <img src="docs/images/photo-solver.png" width="18%">
+  <img src="docs/images/notes.png" width="18%">
+  <img src="docs/images/progress.png" width="18%">
 </p>
 
 ## Highlights
@@ -18,6 +18,7 @@
 - 🎯 Smart Practice targeting weak topics
 - ⏱️ Full-length NEET-style mock tests
 - 📝 AI-generated notes and flashcards
+- 📷 Photo question solver with AI-generated worked solutions
 - 📄 Export notes and completed mock tests as PDFs
 - 📊 Progress tracking, mistake review, and syllabus coverage heatmaps
 - 🔐 Optional cloud sync across devices
@@ -84,6 +85,13 @@ Automatically builds a focused practice session from your weakest topics using p
 - Flashcards
 - Server-side caching
 - PDF export
+
+### Photo Solver
+
+Take a clear photo of a NEET question or choose one from the gallery. The app reads the
+question, transcribes it, gives the final answer, and provides a concise step-by-step
+solution with the key concept. If the image is unclear or incomplete, it explains what
+needs to be retaken rather than guessing.
 
 ### Progress
 
