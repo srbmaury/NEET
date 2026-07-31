@@ -232,4 +232,28 @@ object OpenAiSchema {
             put("schema", notesSchema)
         }
     }
+
+    private val solvedQuestionSchema: JsonObject = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("questionText") { put("type", "string") }
+            putJsonObject("answer") { put("type", "string") }
+            putJsonObject("solution") { put("type", "string") }
+            putJsonObject("keyConcept") { put("type", "string") }
+            putJsonObject("confidenceNote") { put("type", "string") }
+        }
+        put("required", buildJsonArray {
+            add("questionText"); add("answer"); add("solution"); add("keyConcept"); add("confidenceNote")
+        })
+        put("additionalProperties", false)
+    }
+
+    val solvedQuestionResponseFormat: JsonObject = buildJsonObject {
+        put("type", "json_schema")
+        putJsonObject("json_schema") {
+            put("name", "neet_photo_solution")
+            put("strict", true)
+            put("schema", solvedQuestionSchema)
+        }
+    }
 }

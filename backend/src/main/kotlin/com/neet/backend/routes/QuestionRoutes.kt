@@ -1,6 +1,7 @@
 package com.neet.backend.routes
 
 import com.neet.backend.model.GenerateQuestionRequest
+import com.neet.backend.model.SolveQuestionImageRequest
 import com.neet.backend.openai.OpenAiClient
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
@@ -13,5 +14,9 @@ fun Route.questionRoutes(openAi: OpenAiClient) {
         val request = call.receive<GenerateQuestionRequest>()
         val question = openAi.generateQuestion(request)
         call.respond(HttpStatusCode.OK, question)
+    }
+    post("/questions/solve-image") {
+        val request = call.receive<SolveQuestionImageRequest>()
+        call.respond(HttpStatusCode.OK, openAi.solveQuestionFromImage(request))
     }
 }

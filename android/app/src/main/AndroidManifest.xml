@@ -10,6 +10,16 @@
         android:theme="@style/Theme.Neet"
         android:usesCleartextTraffic="true">
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/question_photo_paths" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

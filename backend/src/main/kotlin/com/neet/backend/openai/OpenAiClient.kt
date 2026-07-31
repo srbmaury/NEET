@@ -6,6 +6,8 @@ import com.neet.backend.model.GenerateQuestionRequest
 import com.neet.backend.model.MockTestSlotRequest
 import com.neet.backend.model.Question
 import com.neet.backend.model.QuestionOption
+import com.neet.backend.model.SolveQuestionImageRequest
+import com.neet.backend.model.SolvedQuestion
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -25,6 +27,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import java.util.UUID
 
 class OpenAiException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -51,8 +59,8 @@ class OpenAiClient(private val config: AppConfig) {
         val chatRequest = OpenAiChatRequest(
             model = config.openAiModel,
             messages = listOf(
-                OpenAiMessage(role = "system", content = PromptBuilder.systemPrompt),
-                OpenAiMessage(role = "user", content = PromptBuilder.userPrompt(request)),
+                OpenAiMessage("system", PromptBuilder.systemPrompt),
+                OpenAiMessage("user", PromptBuilder.userPrompt(request)),
             ),
             responseFormat = OpenAiSchema.responseFormat,
         )
@@ -88,15 +96,50 @@ class OpenAiClient(private val config: AppConfig) {
         )
     }
 
+    suspend fun solveQuestionFromImage(request: SolveQuestionImageRequest): SolvedQuestion {
+        require(request.mimeType in setOf("image/jpeg", "image/png", "image/webp")) {
+            "Please upload a JPEG, PNG, or WebP image."
+        }
+        val imageBytes = runCatching { java.util.Base64.getDecoder().decode(request.imageBase64) }
+            .getOrElse { throw IllegalArgumentException("The selected image could not be read.") }
+        require(imageBytes.isNotEmpty() && imageBytes.size <= 5 * 1024 * 1024) {
+            "Image must be smaller than 5 MB."
+        }
+
+        val chatRequest = OpenAiChatRequest(
+            model = config.openAiModel,
+            temperature = 0.2,
+            messages = listOf(
+                OpenAiMessage("system", JsonPrimitive(PromptBuilder.photoSolveSystemPrompt)),
+                OpenAiMessage("user", buildJsonArray {
+                    add(buildJsonObject { put("type", "text"); put("text", "Solve the question in this image.") })
+                    add(buildJsonObject {
+                        put("type", "image_url")
+                        putJsonObject("image_url") {
+                            put("url", "data:${request.mimeType};base64,${request.imageBase64}")
+                            put("detail", "high")
+                        }
+                    })
+                }),
+            ),
+            responseFormat = OpenAiSchema.solvedQuestionResponseFormat,
+        )
+        val content = runCatching { callOpenAi(chatRequest) }
+            .recoverCatching { callOpenAi(chatRequest) }
+            .getOrElse { throw OpenAiException("Failed to solve question image from OpenAI", it) }
+        return runCatching { json.decodeFromString<SolvedQuestion>(content) }
+            .getOrElse { throw OpenAiException("OpenAI returned malformed photo solution JSON", it) }
+    }
+
     private suspend fun verifyAnswer(draft: GeneratedQuestionContent): VerifiedAnswer {
         val chatRequest = OpenAiChatRequest(
             model = config.openAiModel,
             temperature = 0.2,
             messages = listOf(
-                OpenAiMessage(role = "system", content = PromptBuilder.verificationSystemPrompt),
+                OpenAiMessage("system", PromptBuilder.verificationSystemPrompt),
                 OpenAiMessage(
-                    role = "user",
-                    content = PromptBuilder.verificationUserPrompt(
+                    "user",
+                    PromptBuilder.verificationUserPrompt(
                         stem = draft.stem,
                         options = draft.options,
                         proposedCorrectOptionKey = draft.correctOptionKey,
@@ -121,8 +164,8 @@ class OpenAiClient(private val config: AppConfig) {
         val chatRequest = OpenAiChatRequest(
             model = config.openAiModel,
             messages = listOf(
-                OpenAiMessage(role = "system", content = PromptBuilder.notesSystemPrompt),
-                OpenAiMessage(role = "user", content = PromptBuilder.notesUserPrompt(subject, topic)),
+                OpenAiMessage("system", PromptBuilder.notesSystemPrompt),
+                OpenAiMessage("user", PromptBuilder.notesUserPrompt(subject, topic)),
             ),
             responseFormat = OpenAiSchema.notesResponseFormat,
         )
@@ -146,8 +189,8 @@ class OpenAiClient(private val config: AppConfig) {
         val generateChatRequest = OpenAiChatRequest(
             model = config.openAiModel,
             messages = listOf(
-                OpenAiMessage(role = "system", content = PromptBuilder.batchSystemPrompt),
-                OpenAiMessage(role = "user", content = PromptBuilder.batchUserPrompt(slots)),
+                OpenAiMessage("system", PromptBuilder.batchSystemPrompt),
+                OpenAiMessage("user", PromptBuilder.batchUserPrompt(slots)),
             ),
             responseFormat = OpenAiSchema.questionBatchResponseFormat(slots.size),
         )
@@ -197,11 +240,8 @@ class OpenAiClient(private val config: AppConfig) {
             model = config.openAiModel,
             temperature = 0.2,
             messages = listOf(
-                OpenAiMessage(role = "system", content = PromptBuilder.batchVerificationSystemPrompt),
-                OpenAiMessage(
-                    role = "user",
-                    content = PromptBuilder.batchVerificationUserPrompt(drafts),
-                ),
+                OpenAiMessage("system", PromptBuilder.batchVerificationSystemPrompt),
+                OpenAiMessage("user", PromptBuilder.batchVerificationUserPrompt(drafts)),
             ),
             responseFormat = OpenAiSchema.verificationBatchResponseFormat(drafts.size),
         )
@@ -255,7 +295,9 @@ private data class OpenAiChatRequest(
 )
 
 @Serializable
-private data class OpenAiMessage(val role: String, val content: String)
+private data class OpenAiMessage(val role: String, val content: JsonElement) {
+    constructor(role: String, text: String) : this(role, JsonPrimitive(text))
+}
 
 @Serializable
 private data class OpenAiChatResponse(val choices: List<OpenAiChoice> = emptyList())

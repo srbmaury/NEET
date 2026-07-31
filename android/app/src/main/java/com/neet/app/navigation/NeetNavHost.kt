@@ -51,6 +51,7 @@ import com.neet.app.ui.revision.RevisionTrackerScreen
 import com.neet.app.ui.smartpractice.SmartPracticeScreen
 import com.neet.app.ui.sprint.SprintScreen
 import com.neet.app.ui.stats.StatsScreen
+import com.neet.app.ui.solver.ImageQuestionSolveScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -75,12 +76,14 @@ private const val ROUTE_SMART_PRACTICE = "smart_practice"
 private const val ROUTE_SPRINT = "sprint/{subject}/{topic}"
 private const val ROUTE_FLASHCARDS = "flashcards/{subject}/{topic}"
 private const val ROUTE_REVISION_TRACKER = "revision_tracker"
+private const val ROUTE_PHOTO_SOLVER = "photo_solver"
 
 private data class BottomNavTab(val route: String, val label: String)
 
 private val bottomNavTabs = listOf(
     BottomNavTab(ROUTE_PICKER, "Practice"),
     BottomNavTab(ROUTE_MOCK_TEST_HOME, "Mock Test"),
+    BottomNavTab(ROUTE_PHOTO_SOLVER, "Solve"),
     BottomNavTab(ROUTE_NOTES_PICKER, "Notes"),
     BottomNavTab(ROUTE_STATS, "Progress"),
 )
@@ -121,6 +124,12 @@ fun NeetNavHost(
                     },
                     onStartSprint = { subject, topic -> navController.navigateToSprint(subject, topic) },
                     onOpenMore = { navController.navigate(ROUTE_MORE) },
+                )
+            }
+            composable(ROUTE_PHOTO_SOLVER) {
+                ImageQuestionSolveScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(ROUTE_MORE) {
@@ -417,6 +426,7 @@ private fun NeetBottomBar(navController: NavHostController) {
                     val icon = when (tab.route) {
                         ROUTE_PICKER -> Icons.Filled.Edit
                         ROUTE_MOCK_TEST_HOME -> Icons.AutoMirrored.Filled.List
+                        ROUTE_PHOTO_SOLVER -> Icons.Filled.CheckCircle
                         ROUTE_NOTES_PICKER -> Icons.Filled.Info
                         else -> Icons.Filled.CheckCircle
                     }

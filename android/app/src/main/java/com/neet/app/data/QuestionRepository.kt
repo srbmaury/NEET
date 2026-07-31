@@ -2,6 +2,8 @@ package com.neet.app.data
 
 import com.neet.app.data.model.GenerateQuestionRequest
 import com.neet.app.data.model.Question
+import com.neet.app.data.model.SolveQuestionImageRequest
+import com.neet.app.data.model.SolvedQuestion
 import java.io.IOException
 
 sealed interface QuestionResult {
@@ -19,5 +21,9 @@ class QuestionRepository(private val apiService: ApiService) {
         } catch (e: retrofit2.HttpException) {
             QuestionResult.Failure("The server had trouble generating a question. Please try again.")
         }
+    }
+
+    suspend fun solveQuestionImage(request: SolveQuestionImageRequest): Result<SolvedQuestion> = runCatching {
+        apiService.solveQuestionImage(request)
     }
 }

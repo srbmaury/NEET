@@ -16,6 +16,21 @@ data class GenerateQuestionRequest(
 )
 
 @Serializable
+data class SolveQuestionImageRequest(
+    val imageBase64: String,
+    val mimeType: String,
+)
+
+@Serializable
+data class SolvedQuestion(
+    val questionText: String,
+    val answer: String,
+    val solution: String,
+    val keyConcept: String,
+    val confidenceNote: String,
+)
+
+@Serializable
 data class QuestionOption(
     val key: String,
     val text: String,

@@ -165,6 +165,7 @@ The server starts on:
 http://localhost:8080
 ```
 
+
 ---
 
 ## Backend API
@@ -172,6 +173,7 @@ http://localhost:8080
 | Endpoint | Description |
 |----------|-------------|
 | `POST /questions/generate` | Generate a practice question |
+| `POST /questions/solve-image` | Read a question image and generate a worked solution |
 | `POST /mock-test/generate` | Generate a mock test |
 | `GET /notes/{subject}/{topic}` | Retrieve or generate notes |
 | `POST /auth/signup` | Create account |
