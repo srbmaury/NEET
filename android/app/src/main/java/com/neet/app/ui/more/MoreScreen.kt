@@ -1,5 +1,7 @@
 package com.neet.app.ui.more
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neet.app.data.NotesRepository
+import com.neet.app.BuildConfig
 import com.neet.app.pdf.openPdf
 
 private data class MoreFeature(val title: String, val description: String, val onClick: () -> Unit)
@@ -82,6 +85,13 @@ fun MoreScreen(
             "Download All Notes (PDF)",
             "One PDF: quick reference plus every topic's notes",
             onClick = { createDocumentLauncher.launch("NEET_Notes.pdf") },
+        ),
+        MoreFeature(
+            "Privacy & data policy",
+            "How Neet handles your account, progress, and question photos",
+            onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("${BuildConfig.BASE_URL}privacy")))
+            },
         ),
     )
 

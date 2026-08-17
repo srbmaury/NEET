@@ -186,8 +186,11 @@ http://localhost:8080
 | `GET /notes/{subject}/{topic}` | Retrieve or generate notes |
 | `POST /auth/signup` | Create account |
 | `POST /auth/login` | Login |
+| `DELETE /auth/account` | Permanently delete the signed-in account and cloud data |
 | `POST /sync/push` | Upload progress |
 | `GET /sync/pull` | Download progress |
+| `GET /privacy` | Public privacy policy for the app and Play listing |
+| `GET /account-deletion` | Public account-deletion instructions |
 
 ---
 

@@ -37,4 +37,14 @@ class UserRepository {
                 ?.let { UserRow(it[Users.id], it[Users.email], it[Users.passwordHash]) }
         }
     }
+
+    /** Deletes the account and every row of cloud data owned by it in one transaction. */
+    suspend fun delete(userId: Uuid) = withContext(Dispatchers.IO) {
+        transaction {
+            MockTestQuestions.deleteWhere { MockTestQuestions.userId eq userId }
+            MockTestSessions.deleteWhere { MockTestSessions.userId eq userId }
+            AnsweredQuestions.deleteWhere { AnsweredQuestions.userId eq userId }
+            Users.deleteWhere { Users.id eq userId }
+        }
+    }
 }

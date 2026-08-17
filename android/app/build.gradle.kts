@@ -22,7 +22,7 @@ android {
             buildConfigField("String", "BASE_URL", "\"https://neet-wxmh.onrender.com/\"")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             buildConfigField("String", "BASE_URL", "\"https://neet-wxmh.onrender.com/\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -71,4 +71,6 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation(kotlin("test"))
+    testImplementation("junit:junit:4.13.2")
 }

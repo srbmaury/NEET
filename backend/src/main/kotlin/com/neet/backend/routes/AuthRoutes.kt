@@ -7,10 +7,16 @@ import com.neet.backend.db.UserRepository
 import com.neet.backend.model.AuthResponse
 import com.neet.backend.model.LoginRequest
 import com.neet.backend.model.SignupRequest
+import com.neet.backend.plugins.AUTH_JWT
+import com.neet.backend.plugins.userId
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.post
 import org.mindrot.jbcrypt.BCrypt
 
@@ -41,5 +47,12 @@ fun Route.authRoutes(userRepository: UserRepository, jwtService: JwtService) {
         }
 
         call.respond(HttpStatusCode.OK, AuthResponse(jwtService.generateToken(user.id), user.id.toString()))
+    }
+
+    authenticate(AUTH_JWT) {
+        delete("/auth/account") {
+            userRepository.delete(call.principal<JWTPrincipal>()!!.userId())
+            call.respond(HttpStatusCode.NoContent)
+        }
     }
 }

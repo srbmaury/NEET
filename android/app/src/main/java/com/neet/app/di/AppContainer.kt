@@ -56,18 +56,18 @@ object AppContainer {
     }
 
     private val okHttpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
+        OkHttpClient.Builder().apply {
             // callTimeout alone doesn't override OkHttp's default 10s per-read/write timeouts —
             // a slow-but-still-fast-enough response can hit those before callTimeout ever fires.
-            .callTimeout(35, TimeUnit.SECONDS)
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(35, TimeUnit.SECONDS)
-            .writeTimeout(35, TimeUnit.SECONDS)
-            .addInterceptor(authInterceptor)
-            .addInterceptor(
-                HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC),
-            )
-            .build()
+            callTimeout(35, TimeUnit.SECONDS)
+            connectTimeout(10, TimeUnit.SECONDS)
+            readTimeout(35, TimeUnit.SECONDS)
+            writeTimeout(35, TimeUnit.SECONDS)
+            addInterceptor(authInterceptor)
+            if (BuildConfig.DEBUG) {
+                addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC))
+            }
+        }.build()
     }
 
     private val retrofit: Retrofit by lazy {
@@ -84,7 +84,9 @@ object AppContainer {
 
     val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
 
-    val authRepository: AuthRepository by lazy { AuthRepository(authApiService, secureTokenStore) }
+    val authRepository: AuthRepository by lazy {
+        AuthRepository(authApiService, secureTokenStore) { database.clearAllTables() }
+    }
 
     // Notes generation is a single OpenAI call with no verification pass (cheaper/faster than
     // question generation), and results are cached server-side after the first request — the
@@ -97,16 +99,16 @@ object AppContainer {
     // test) — kept on a separate client/timeout so a genuinely-hung single-question call still
     // fails fast at 35s instead of regressing to a multi-minute hang.
     private val mockTestOkHttpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .callTimeout(6, TimeUnit.MINUTES)
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(6, TimeUnit.MINUTES)
-            .writeTimeout(1, TimeUnit.MINUTES)
-            .addInterceptor(authInterceptor)
-            .addInterceptor(
-                HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC),
-            )
-            .build()
+        OkHttpClient.Builder().apply {
+            callTimeout(6, TimeUnit.MINUTES)
+            connectTimeout(10, TimeUnit.SECONDS)
+            readTimeout(6, TimeUnit.MINUTES)
+            writeTimeout(1, TimeUnit.MINUTES)
+            addInterceptor(authInterceptor)
+            if (BuildConfig.DEBUG) {
+                addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC))
+            }
+        }.build()
     }
 
     private val mockTestRetrofit: Retrofit by lazy {
@@ -129,9 +131,7 @@ object AppContainer {
     val healthApiService: HealthApiService by lazy { mockTestRetrofit.create(HealthApiService::class.java) }
 
     private val database: NeetDatabase by lazy {
-        Room.databaseBuilder(appContext, NeetDatabase::class.java, "neet.db")
-            .fallbackToDestructiveMigration(true)
-            .build()
+        Room.databaseBuilder(appContext, NeetDatabase::class.java, "neet.db").build()
     }
 
     val historyRepository: HistoryRepository by lazy {

@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,7 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -83,6 +87,8 @@ fun StatsScreen(
     val isLoggedIn by authRepository.isLoggedIn.collectAsState(initial = false)
     val accountEmail by authRepository.accountEmail.collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
 
     // Cloud sync (via the account below) replaced manual backup/restore — quietly keep this
     // device's data current with the server each time this screen is opened while signed in,
@@ -122,6 +128,7 @@ fun StatsScreen(
                         authRepository.logout()
                     }
                 },
+                onDeleteAccount = { showDeleteConfirmation = true },
             )
         }
 
@@ -229,6 +236,42 @@ fun StatsScreen(
             }
         }
     }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete account?") },
+            text = {
+                Text(
+                    "This permanently deletes your account and all practice data stored by Neet, " +
+                        "including data on this device. This cannot be undone.",
+                )
+            },
+            confirmButton = {
+                OutlinedButton(onClick = {
+                    showDeleteConfirmation = false
+                    coroutineScope.launch {
+                        when (val result = authRepository.deleteAccount()) {
+                            is com.neet.app.data.AuthResult.Success -> Unit
+                            is com.neet.app.data.AuthResult.Failure -> deleteError = result.message
+                        }
+                    }
+                }) { Text("Delete permanently") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteConfirmation = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    deleteError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { deleteError = null },
+            confirmButton = { OutlinedButton(onClick = { deleteError = null }) { Text("OK") } },
+            title = { Text("Account not deleted") },
+            text = { Text(message) },
+        )
+    }
 }
 
 @Composable
@@ -238,6 +281,7 @@ private fun AccountSection(
     onSignIn: () -> Unit,
     onSignUp: () -> Unit,
     onLogOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -253,7 +297,10 @@ private fun AccountSection(
                     color = MaterialTheme.colorScheme.secondary,
                 )
                 Spacer(Modifier.padding(top = 8.dp))
-                OutlinedButton(onClick = onLogOut) { Text("Log Out") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onLogOut) { Text("Log Out") }
+                    OutlinedButton(onClick = onDeleteAccount) { Text("Delete account") }
+                }
             } else {
                 Text("Sync across devices", style = MaterialTheme.typography.labelMedium)
                 Text(

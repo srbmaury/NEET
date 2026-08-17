@@ -14,6 +14,7 @@ import com.neet.backend.plugins.configureSerialization
 import com.neet.backend.routes.authRoutes
 import com.neet.backend.routes.mockTestRoutes
 import com.neet.backend.routes.notesRoutes
+import com.neet.backend.routes.privacyRoutes
 import com.neet.backend.routes.questionRoutes
 import com.neet.backend.routes.syncRoutes
 import io.ktor.http.HttpStatusCode
@@ -51,6 +52,7 @@ fun main() {
             authRoutes(userRepository, jwtService)
             syncRoutes(syncRepository)
             notesRoutes(notesRepository, openAi)
+            privacyRoutes()
         }
     }.start(wait = true)
 }
